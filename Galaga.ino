@@ -136,6 +136,7 @@ Star stars[MAX_STARS];
 int16_t formationOffsetX = 0;
 int16_t formationOffsetY = 0;
 int16_t formationOffsetY_drop = 0;
+int16_t lastSineOffsetY = 0;
 int8_t lastFormationDir = 0;
 uint16_t diveTimer = 0;
 uint16_t mothershipSpawnTimer = 0;
@@ -158,9 +159,7 @@ void spawnParticles(int16_t x, int16_t y, uint8_t count) {
 }
 
 void initWave() {
-  formationOffsetX = 0;
-  formationOffsetY = 0;
-  formationOffsetY_drop = 0;
+  lastSineOffsetY = 0;
   lastFormationDir = 0;
   mothership.active = false;
   mothershipSpawnTimer = 0;
@@ -210,6 +209,8 @@ void resetGame() {
   playerHealth = 100;
   score = 0;
   wave = 1;
+  formationOffsetX = 0;
+  formationOffsetY_drop = 0;
   invulnTimer = 90; // 1.5 second grace period
   screenInvertTimer = 0;
   dualShooterTimer = 0;
@@ -344,6 +345,7 @@ void setup() {
   arduboy.setFrameRate(60);
   arduboy.initRandomSeed();
   beep.begin();
+  Serial.begin(9600); // Initialize Serial monitoring for debugging
 
   for (uint8_t i = 0; i < MAX_STARS; i++) {
     stars[i].xCoord = random(0, 115);
@@ -477,7 +479,7 @@ void updatePlaying() {
       if (enemies[i].active && enemies[i].queued) {
         enemies[i].queued = false;
         enemies[i].arriving = true;
-        enemies[i].targetX = enemies[i].homeX;
+        enemies[i].targetX = enemies[i].homeX + formationOffsetX;
         enemies[i].targetY = enemies[i].homeY;
         released++;
       }
@@ -515,15 +517,47 @@ void updatePlaying() {
     }
   }
 
-  // Continuous up/down formation oscillation & dropping 1 pixel on direction change
-  int16_t nextOffsetY = (int16_t)(sin((float)arduboy.frameCount * 0.04) * 6.0 * 16.0);
-  int8_t currentFormationDir = (nextOffsetY > formationOffsetY) ? 1 : ((nextOffsetY < formationOffsetY) ? -1 : lastFormationDir);
+  // Count completely dead columns to dynamically increase vertical oscillation range
+  uint8_t deadColumns = 0;
+  for (uint8_t c = 0; c < ENEMY_COLS; c++) {
+    bool colDead = true;
+    for (uint8_t r = 0; r < ENEMY_ROWS; r++) {
+      if (enemies[c * ENEMY_ROWS + r].active) {
+        colDead = false;
+        break;
+      }
+    }
+    if (colDead) deadColumns++;
+  }
+  float dynamicAmplitude = 6.0f + (deadColumns * 2.5f);
 
+  // Pure sine wave oscillation tracking for vertical direction changes
+  int16_t nextSineOffsetY = (int16_t)(sin((float)arduboy.frameCount * 0.04) * dynamicAmplitude * 16.0);
+  int8_t currentFormationDir = (nextSineOffsetY > lastSineOffsetY) ? 1 : ((nextSineOffsetY < lastSineOffsetY) ? -1 : lastFormationDir);
+
+  // Step closer horizontally AND drop vertically ONLY when movement direction changes
   if (currentFormationDir != lastFormationDir && lastFormationDir != 0) {
-    formationOffsetY_drop += 16; // Drop 1 pixel (16 sub-pixels) down when changing direction
+    formationOffsetY_drop += 8; // Drop down slightly
+    if (formationOffsetY_drop > (16 << 4)) formationOffsetY_drop = (16 << 4); // Strict cap
+    
+    formationOffsetX -= 16; // Step 1 pixel closer to player horizontally on direction change
+    if (formationOffsetX < -1500) formationOffsetX = -1500; // Expanded limit cap allowing full approach across the screen
   }
   lastFormationDir = currentFormationDir;
-  formationOffsetY = nextOffsetY + formationOffsetY_drop;
+  lastSineOffsetY = nextSineOffsetY;
+  formationOffsetY = nextSineOffsetY + formationOffsetY_drop;
+
+  // Detailed Serial Logging (Tracking formation offset, direction, and rightmost column index 23 / top of col 3)
+  if (arduboy.frameCount % 60 == 0) {
+    Serial.print(F("Dir: "));
+    Serial.print(currentFormationDir);
+    Serial.print(F(" OffX: "));
+    Serial.print(formationOffsetX >> 4);
+    Serial.print(F(" Col3(Right) homeX: "));
+    Serial.print(enemies[23].homeX >> 4);
+    Serial.print(F(" actualX: "));
+    Serial.println(enemies[23].xCoord >> 4);
+  }
 
   // Mothership Spawn & Behavior Logic (Waits until formation is fully complete)
   if (!mothership.active && formationComplete) {
@@ -587,13 +621,14 @@ void updatePlaying() {
     if (enemies[i].queued) continue;
 
     if (enemies[i].arriving) {
-      int16_t dx = enemies[i].targetX - enemies[i].xCoord;
-      int16_t dy = enemies[i].targetY - enemies[i].yCoord;
+      int16_t targetXPos = enemies[i].homeX + formationOffsetX;
+      int16_t dx = targetXPos - enemies[i].xCoord;
+      int16_t dy = enemies[i].homeY - enemies[i].yCoord;
       int32_t distSq = (int32_t)dx * dx + (int32_t)dy * dy;
       
       if (distSq < (48 * 48)) { // Within 3 pixels -> snap precisely
-        enemies[i].xCoord = enemies[i].targetX;
-        enemies[i].yCoord = enemies[i].targetY;
+        enemies[i].xCoord = targetXPos;
+        enemies[i].yCoord = enemies[i].homeY;
         enemies[i].arriving = false;
       } else {
         int16_t speed = 48; // 3 pixels per frame
@@ -608,7 +643,10 @@ void updatePlaying() {
     } 
     else if (!enemies[i].diving) {
       enemies[i].xCoord = enemies[i].homeX + formationOffsetX;
-      enemies[i].yCoord = enemies[i].homeY + formationOffsetY;
+      int16_t targetY = enemies[i].homeY + formationOffsetY;
+      if (targetY < (2 << 4)) targetY = 2 << 4;
+      if (targetY > (46 << 4)) targetY = 46 << 4;
+      enemies[i].yCoord = targetY;
     } 
     else {
       if (!enemies[i].returning) {

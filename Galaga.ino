@@ -323,9 +323,10 @@ void drawLivesAndHealth() {
   uint8_t displayLives = (lives > 9) ? 9 : lives;
   Sprites::drawSelfMasked(121, 2, Numbers, displayLives);
 
-  arduboy.drawRect(121, 12, 4, 20, WHITE);
+  arduboy.drawRect(120, 11, 6, 22, WHITE);
   uint8_t fillHeight = (playerHealth * 18) / 100;
   if (fillHeight > 18) fillHeight = 18;
+
   if (fillHeight > 0) {
     arduboy.fillRect(122, 13 + 18 - fillHeight, 2, fillHeight, WHITE);
   }
@@ -473,7 +474,6 @@ void updatePlaying() {
 
   replenishTimer++;
   if (replenishTimer > 250) {
-  Serial.println("A");
     replenishTimer = 0;
     for (uint8_t i = 0; i < MAX_ENEMIES; i++) {
       if (!enemies[i].active) {
@@ -598,12 +598,6 @@ void updatePlaying() {
         enemies[i].arriving = false;
       } else {
         int16_t speed = 48;
-		if (i ==0 || i == 5) {
-			Serial.print("(A) enemies[");
-			Serial.print(i);
-			Serial.print("], yCoord ");
-			Serial.print(enemies[i].yCoord);
-		}
         if (abs(dx) > abs(dy)) {
           enemies[i].xCoord += (dx > 0) ? speed : -speed;
           enemies[i].yCoord += (int32_t)dy * speed / abs(dx);
@@ -611,32 +605,14 @@ void updatePlaying() {
           enemies[i].yCoord += (dy > 0) ? speed : -speed;
           enemies[i].xCoord += (int32_t)dx * speed / abs(dy);
         }
-		if (i ==0 || i == 5) {
-			Serial.print(" after");
-			Serial.print(" yCoord ");
-			Serial.println(enemies[i].yCoord);
-		}
       }
     } 
     else if (!enemies[i].diving) {
       enemies[i].xCoord = enemies[i].homeX + formationOffsetX;
       int16_t targetY = enemies[i].homeY + formationOffsetY;
       if (targetY < (2 << 4)) targetY = 2 << 4;
-      if (targetY > (46 << 4)) targetY = 46 << 4;
-	  if (i ==0 || i == 5) {
-			Serial.print("(B) enemies[");
-			Serial.print(i);
-			Serial.print("], yCoord ");
-			Serial.print(enemies[i].yCoord);
-		}
-        enemies[i].yCoord = targetY;
-		if (i ==0 || i == 5) {
-			Serial.print(" after");
-			Serial.print(" yCoord ");
-			Serial.println(enemies[i].yCoord);
-		}
-
-      
+      if (targetY > (56 << 4)) targetY = 56 << 4; // <-- Raised clamp from 46 to 56 pixels
+      enemies[i].yCoord = targetY;
     } 
     else {
       if (!enemies[i].returning) {
@@ -668,6 +644,8 @@ void updatePlaying() {
       } else {
         enemies[i].xCoord -= 16;
         int16_t targetY = enemies[i].homeY + formationOffsetY;
+        if (targetY < (2 << 4)) targetY = 2 << 4;
+        if (targetY > (56 << 4)) targetY = 56 << 4;
         if (enemies[i].yCoord < targetY) enemies[i].yCoord += 8;
         else if (enemies[i].yCoord > targetY) enemies[i].yCoord -= 8;
 

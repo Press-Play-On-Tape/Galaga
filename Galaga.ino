@@ -76,7 +76,7 @@ struct Star {
 enum GameState : uint8_t { SplahScreen, TITLE, PLAYING, GAMEOVER };
 GameState gameState = SplahScreen;
 
-int16_t playerX = 12 << 4;
+int16_t playerX = 4 << 4;
 int16_t playerY = 32 << 4;
 int16_t playerVx = 0;
 int16_t playerVy = 0;
@@ -107,6 +107,7 @@ uint16_t mothershipSpawnTimer = 0;
 uint16_t healthPackSpawnTimer = 0;
 uint8_t arrivalReleaseTimer = 0;
 uint16_t replenishTimer = 0;
+uint16_t formationFrame = 0;
 
 // --- Helper Functions ---
 void spawnParticles(int16_t x, int16_t y, uint8_t count) {
@@ -130,7 +131,11 @@ void initWave() {
   healthPack.active = false;
   healthPackSpawnTimer = 0;
   arrivalReleaseTimer = 0;
-  replenishTimer = 0;
+    replenishTimer = 0;
+formationOffsetX = 0;
+formationOffsetY = 0;
+formationOffsetY_drop = 0;
+formationFrame = 0;
 
   // Gentle wave shift keeping formation well above the bottom 24 pixels (max Y
   // <= 40)
@@ -189,21 +194,25 @@ void initWave() {
           break;
       }
 
-      if (c >= 2) {
-        enemies[idx].type = 2;  // Boss / Tough (2 hits)
+      if (c == 1) {
+        enemies[idx].type = 1;  // Butterfly
+        enemies[idx].hp = 1;
+
+      } else if (c >= 2) {
+        enemies[idx].type = 2;  // Boss
         enemies[idx].hp = 2;
+
       } else {
-        enemies[idx].type = 0;  // Bee / Standard (1 hit)
+        enemies[idx].type = 0;  // Bee
         enemies[idx].hp = 1;
       }
       idx++;
-
     }
   }
 }
 
 void resetGame() {
-  playerX = 12 << 4;
+  playerX = 4 << 4;
   playerY = 32 << 4;
   playerVx = 0;
   playerVy = 0;
@@ -373,6 +382,7 @@ void updateStars() {
 }
 
 void updatePlaying() {
+	formationFrame++;
   if (invulnTimer > 0) invulnTimer--;
   if (screenInvertTimer > 0) screenInvertTimer--;
   if (dualShooterTimer > 0) dualShooterTimer--;
@@ -566,23 +576,12 @@ void updatePlaying() {
     if (colDead) deadColumns++;
   }
 
-  //   float dynamicAmplitude = 12.0f;
-
-  //   formationOffsetX = (int16_t)(sin((float)arduboy.frameCount * 0.025f) *
-  //                                dynamicAmplitude * 16.0f);
-
-  //   // formationOffsetY =
-  //   //     formationOffsetY_drop;
-
-  //   formationOffsetY = 0;
-  //   formationOffsetY_drop = 0;
-
   float dynamicAmplitude = 4.0f;
 
   formationOffsetX = 0;
 
   formationOffsetY =
-      (1 << 4) + (int16_t)(sin((float)arduboy.frameCount * 0.025f) *
+      (1 << 4) + (int16_t)(sin((float)formationFrame * 0.025f) *
                            dynamicAmplitude * 16.0f);
   formationOffsetY_drop = 0;
 
@@ -642,7 +641,6 @@ void updatePlaying() {
   uint8_t activeEnemies = 0;
   for (uint8_t i = 0; i < MAX_ENEMIES; i++) {
     if (!enemies[i].active) continue;
-
 
     activeEnemies++;
 
@@ -742,17 +740,43 @@ void updatePlaying() {
     } else {
       if (!enemies[i].returning) {
         enemies[i].divePhase += 1;
-        int16_t diveSpeed = 10 + (wave * 1) + (survivalTimer / 300);
+int16_t diveSpeed =
+    10 + (wave * 1) + (survivalTimer / 300);
 
-        int16_t dx = playerX - enemies[i].xCoord;
-        int16_t dy = playerY - enemies[i].yCoord;
+int16_t dx =
+    playerX - enemies[i].xCoord;
 
-        int32_t len =
-            max((int32_t)1, (int32_t)sqrt((float)dx * dx + (float)dy * dy));
+int16_t dy =
+    playerY - enemies[i].yCoord;
 
-        enemies[i].xCoord += (dx * diveSpeed) / len;
-        enemies[i].yCoord += (dy * diveSpeed) / len;
+int32_t len =
+    max((int32_t)1,
+        (int32_t)sqrt(
+            (float)dx * dx +
+            (float)dy * dy));
 
+enemies[i].xCoord +=
+    (dx * diveSpeed) / len;
+
+enemies[i].yCoord +=
+    (dy * diveSpeed) / len;
+
+/*
+ * Once an enemy reaches the player's area,
+ * immediately start the return phase.
+ */
+
+if (abs(dx) < (10 << 4) &&
+    abs(dy) < (10 << 4)) {
+
+    enemies[i].diving = false;
+    enemies[i].returning = true;
+
+    Serial.print(F("BREAKOFF "));
+    Serial.println(i);
+
+    continue;
+}
         if (enemies[i].divePattern == 0) {
           enemies[i].yCoord +=
               (int16_t)(sin((float)enemies[i].divePhase * 0.06) * 16.0 *
@@ -773,11 +797,19 @@ void updatePlaying() {
           fireEnemyBullet(enemies[i].xCoord, enemies[i].yCoord);
         }
 
-        if (enemies[i].xCoord < (-16 << 4)) {
-          enemies[i].xCoord = 120 << 4;
-          enemies[i].yCoord = enemies[i].homeY + formationOffsetY;
-          enemies[i].returning = true;
-        }
+if (enemies[i].xCoord < (-16 << 4)) {
+
+    enemies[i].xCoord = 120 << 4;
+    enemies[i].yCoord =
+        enemies[i].homeY +
+        formationOffsetY;
+
+    enemies[i].diving = false;
+    enemies[i].returning = true;
+
+    Serial.print(F("EXITRETURN "));
+    Serial.println(i);
+}
       } else {
         int16_t targetX = enemies[i].homeX + formationOffsetX;
 
@@ -810,6 +842,25 @@ void updatePlaying() {
         enemies[i].hp--;
         if (enemies[i].hp == 0) {
           enemies[i].active = false;
+enemies[i].active = false;
+
+Serial.print(F("DESTROY "));
+Serial.print(i);
+
+Serial.print(F(" A="));
+Serial.print(enemies[i].active);
+
+Serial.print(F(" D="));
+Serial.print(enemies[i].diving);
+
+Serial.print(F(" R="));
+Serial.print(enemies[i].returning);
+
+Serial.print(F(" X="));
+Serial.print(enemies[i].xCoord >> 4);
+
+Serial.print(F(" Y="));
+Serial.println(enemies[i].yCoord >> 4);		  
           spawnParticles(enemies[i].xCoord >> 4, enemies[i].yCoord >> 4, 4);
           score += (enemies[i].type + 1) * 25 * (enemies[i].diving ? 2 : 1);
           beep.tone(beep.freq(160), 4);
@@ -872,12 +923,42 @@ void updatePlaying() {
         enemies[i].yCoord + (enemySz << 4) > playerY &&
         enemies[i].yCoord < playerY + (7 << 4)) {
 
-      enemies[i].active = false;
+		enemies[i].active = false;
+		Serial.print(F("COLLISION "));
+Serial.print(i);
 
-      enemies[i].arriving = false;
-      enemies[i].diving = false;
-      enemies[i].returning = false;
-      enemies[i].queued = false;
+Serial.print(F(" X="));
+Serial.print(enemies[i].xCoord >> 4);
+
+Serial.print(F(" Y="));
+Serial.print(enemies[i].yCoord >> 4);
+
+Serial.print(F(" H="));
+Serial.print(playerHealth);
+
+Serial.print(F(" T="));
+Serial.print(enemies[i].type);
+
+Serial.print(F(" A="));
+Serial.print(enemies[i].active);
+
+Serial.print(F(" D="));
+Serial.print(enemies[i].diving);
+
+Serial.print(F(" R="));
+Serial.print(enemies[i].returning);
+
+Serial.print(F(" Q="));
+Serial.println(enemies[i].queued);
+
+
+		enemies[i].xCoord = -1000;
+		enemies[i].yCoord = -1000;
+
+		enemies[i].arriving = false;
+		enemies[i].diving = false;
+		enemies[i].returning = false;
+		enemies[i].queued = false;
 
       spawnParticles(enemies[i].xCoord >> 4, enemies[i].yCoord >> 4, 10);
 
@@ -894,7 +975,7 @@ void updatePlaying() {
           gameState = GAMEOVER;
         } else {
           playerHealth = 100;
-          playerX = 12 << 4;
+          playerX = 4 << 4;
           playerY = 32 << 4;
           invulnTimer = 90;
         }
@@ -914,6 +995,26 @@ void updatePlaying() {
       int16_t eY = enemies[i].yCoord >> 4;
       if (eX >= -8 && eX < 128 && eY >= -8 && eY < 64) {
         Sprites::drawSelfMasked(eX, eY, sprite, 0);
+if ((eX >> 0) <= ((playerX >> 4) + 8) &&
+(eX >> 0) >= ((playerX >> 4) - 8) &&
+(eY >> 0) <= ((playerY >> 4) + 8) &&
+(eY >> 0) >= ((playerY >> 4) - 8)) {
+
+Serial.print(F("DRAW_NEAR_PLAYER "));
+Serial.print(i);
+
+Serial.print(F(" ACTIVE="));
+Serial.print(enemies[i].active);
+
+Serial.print(F(" ARR="));
+Serial.print(enemies[i].arriving);
+
+Serial.print(F(" DIV="));
+Serial.print(enemies[i].diving);
+
+Serial.print(F(" RET="));
+Serial.println(enemies[i].returning);
+}
       }
     }
   }
@@ -948,7 +1049,7 @@ void updatePlaying() {
               gameState = GAMEOVER;
             } else {
               playerHealth = 100;
-              playerX = 12 << 4;
+              playerX = 4 << 4;
               playerY = 32 << 4;
               invulnTimer = 90;
             }
@@ -970,7 +1071,7 @@ void updatePlaying() {
     }
   }
 
-  if (invulnTimer == 0 || (invulnTimer % 6 < 3)) {
+  if (invulnTimer == 0 || (invulnTimer % 12 < 6)) {
     int16_t pX = playerX >> 4;
     int16_t pY = playerY >> 4;
     if (pX >= -8 && pX < 128 && pY >= -8 && pY < 64) {
@@ -998,9 +1099,7 @@ void loop() {
     updateStars();
     arduboy.invert(false);
     Sprites::drawOverwrite(103, 0, Images::Galaga_Title, 0);
-Sprites::drawOverwrite(24, 8, Images::LargePlayer, arduboy.frameCount % 2);
-
-
+    Sprites::drawOverwrite(24, 8, Images::LargePlayer, arduboy.frameCount % 2);
 
     // arduboy.setCursor(44, 25);
     // arduboy.print(F("GALAGA"));

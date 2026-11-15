@@ -76,7 +76,7 @@ struct Star {
 enum GameState : uint8_t { SplahScreen, TITLE, PLAYING, GAMEOVER };
 GameState gameState = SplahScreen;
 
-int16_t playerX = 0;
+int16_t playerX = 4 << 4;
 int16_t playerY = 32 << 4;
 int16_t playerVx = 0;
 int16_t playerVy = 0;
@@ -189,29 +189,25 @@ void initWave() {
           break;
       }
 
-      if (c >= 2) {
-        enemies[idx].type = 2;  // Boss / Tough (2 hits)
+      if (c == 1) {
+        enemies[idx].type = 1;  // Butterfly
+        enemies[idx].hp = 1;
+
+      } else if (c >= 2) {
+        enemies[idx].type = 2;  // Boss
         enemies[idx].hp = 2;
+
       } else {
-        enemies[idx].type = 0;  // Bee / Standard (1 hit)
+        enemies[idx].type = 0;  // Bee
         enemies[idx].hp = 1;
       }
       idx++;
-
-      Serial.print(F("INIT "));
-      Serial.print(idx);
-
-      Serial.print(F(" HX="));
-      Serial.print(enemies[idx - 1].homeX >> 4);
-
-      Serial.print(F(" HY="));
-      Serial.println(enemies[idx - 1].homeY >> 4);
     }
   }
 }
 
 void resetGame() {
-  playerX = 0;
+  playerX = 4 << 4;
   playerY = 32 << 4;
   playerVx = 0;
   playerVy = 0;
@@ -307,13 +303,6 @@ void triggerRandomDives() {
 
     if (target != -1) {
       enemies[target].diving = true;
-
-      Serial.print(F("DIVE "));
-      Serial.print(target);
-      Serial.print(F(" HX="));
-      Serial.print(enemies[target].homeX >> 4);
-      Serial.print(F(" HY="));
-      Serial.println(enemies[target].homeY >> 4);
       enemies[target].returning = false;
       enemies[target].divePhase = 0;
       enemies[target].divePattern = pattern;
@@ -348,10 +337,10 @@ void drawLivesAndHealth() {
 
   arduboy.drawRect(120, 11, 6, 22, WHITE);
   uint8_t fillHeight = (playerHealth * 18) / 100;
+
   if (fillHeight > 18) fillHeight = 18;
-  if (fillHeight > 0) {
-    arduboy.fillRect(122, 13 + 18 - fillHeight, 2, fillHeight, WHITE);
-  }
+
+  arduboy.fillRect(122, 13, 2, fillHeight, WHITE);
 }
 
 void setup() {
@@ -509,13 +498,6 @@ void updatePlaying() {
         enemies[i].queued = false;
         enemies[i].arriving = true;
         enemies[i].entryPhase = 0;
-
-        Serial.print(F("RELEASE "));
-        Serial.print(i);
-        Serial.print(F(" HX="));
-        Serial.print(enemies[i].homeX >> 4);
-        Serial.print(F(" HY="));
-        Serial.println(enemies[i].homeY >> 4);
         released++;
       }
     }
@@ -527,9 +509,6 @@ void updatePlaying() {
     for (uint8_t idx = 0; idx < MAX_ENEMIES; idx++) {
       if (!enemies[idx].active) {
         enemies[idx].active = true;
-
-        Serial.print(F("RESPAWN "));
-        Serial.println(idx);
         enemies[idx].hp = (enemies[idx].type == 2) ? 2 : 1;
         enemies[idx].queued = true;
         enemies[idx].arriving = false;
@@ -590,63 +569,15 @@ void updatePlaying() {
     }
     if (colDead) deadColumns++;
   }
-  //   float dynamicAmplitude = 6.0f + (deadColumns * 2.5f);
 
-  //   int16_t nextSineOffsetY = (int16_t)(sin((float)arduboy.frameCount * 0.04)
-  //   * dynamicAmplitude * 16.0);
+  float dynamicAmplitude = 4.0f;
 
-  //   int8_t currentFormationDir = (nextSineOffsetY > lastSineOffsetY) ? 1 :
-  //   ((nextSineOffsetY < lastSineOffsetY) ? -1 : lastFormationDir);
+  formationOffsetX = 0;
 
-  //  if (currentFormationDir != lastFormationDir &&
-  //     lastFormationDir != 0) {
-
-  //     formationOffsetY_drop += 8;
-
-  //     if (formationOffsetY_drop > (16 << 4))
-  //         formationOffsetY_drop = (16 << 4);
-  // }
-  //   lastFormationDir = currentFormationDir;
-  //   lastSineOffsetY = nextSineOffsetY;
-  //   formationOffsetY = nextSineOffsetY + formationOffsetY_drop;
-
-  // float dynamicAmplitude =
-  //     14.0f + (deadColumns * 2.0f);
-
-  // formationOffsetX =
-  //     (int16_t)(
-  //         sin((float)arduboy.frameCount * 0.025f)
-  //         * dynamicAmplitude
-  //         * 16.0f);
-
-  // formationOffsetY =
-  //     formationOffsetY_drop;
-
-  float dynamicAmplitude = 12.0f;
-
-  formationOffsetX = (int16_t)(sin((float)arduboy.frameCount * 0.025f) *
-                               dynamicAmplitude * 16.0f);
-
-  // formationOffsetY =
-  //     formationOffsetY_drop;
-
-  formationOffsetY = 0;
+  formationOffsetY =
+      (1 << 4) + (int16_t)(sin((float)arduboy.frameCount * 0.025f) *
+                           dynamicAmplitude * 16.0f);
   formationOffsetY_drop = 0;
-
-  if ((arduboy.frameCount % 60) == 0) {
-    for (uint8_t c = 0; c < ENEMY_COLS; c++) {
-      uint8_t idx = c * ENEMY_ROWS;
-
-      Serial.print(F("COL "));
-      Serial.print(c);
-
-      Serial.print(F(" HX="));
-      Serial.print(enemies[idx].homeX >> 4);
-
-      Serial.print(F(" PX="));
-      Serial.println((enemies[idx].homeX + formationOffsetX) >> 4);
-    }
-  }
 
   if (!mothership.active && formationComplete) {
     mothershipSpawnTimer++;
@@ -704,17 +635,6 @@ void updatePlaying() {
   uint8_t activeEnemies = 0;
   for (uint8_t i = 0; i < MAX_ENEMIES; i++) {
     if (!enemies[i].active) continue;
-    if (enemies[i].xCoord < (-200 << 4) || enemies[i].xCoord > (300 << 4) ||
-        enemies[i].yCoord < (-100 << 4) || enemies[i].yCoord > (200 << 4)) {
-      Serial.print(F("BAD "));
-      Serial.print(i);
-
-      Serial.print(F(" X="));
-      Serial.print(enemies[i].xCoord);
-
-      Serial.print(F(" Y="));
-      Serial.println(enemies[i].yCoord);
-    }
 
     activeEnemies++;
 
@@ -795,38 +715,8 @@ void updatePlaying() {
       enemies[i].xCoord += dx / 12;
       enemies[i].yCoord += dy / 12;
 
-      //   if (abs(dx) < (4 << 4) &&
-      //       abs(dy) < (4 << 4)) {
       if (abs(dx) < (8 << 4) && abs(dy) < (8 << 4)) {
-        Serial.print(F("LAND "));
-        Serial.print(i);
-
-        Serial.print(F(" HX="));
-        Serial.print(enemies[i].homeX >> 4);
-
-        Serial.print(F(" FX="));
-        Serial.print(formationOffsetX >> 4);
-
-        Serial.print(F(" X="));
-        Serial.print(targetX >> 4);
-
-        Serial.print(F(" Y="));
-        Serial.println(targetY >> 4);
-
-        Serial.print(F("STATE "));
-        Serial.print(i);
-
-        Serial.print(F(" A="));
-        Serial.print(enemies[i].arriving);
-
-        Serial.print(F(" D="));
-        Serial.print(enemies[i].diving);
-
-        Serial.print(F(" R="));
-        Serial.println(enemies[i].returning);
-
         enemies[i].arriving = false;
-
         enemies[i].xCoord = targetX;
         enemies[i].yCoord = targetY;
       }
@@ -836,9 +726,10 @@ void updatePlaying() {
       enemies[i].xCoord = enemies[i].homeX + formationOffsetX;
       int16_t targetY = enemies[i].homeY + formationOffsetY;
       if (targetY < (2 << 4)) targetY = 2 << 4;
-      //   if (targetY > (40 << 4)) targetY = 40 << 4; // Clamp formation max Y
-      //   at 40 (at least 24 pixels above bottom)
-      if (targetY > (54 << 4)) targetY = 54 << 4;
+      //   if (targetY > (54 << 4)) targetY = 54 << 4;
+      if (targetY < (2 << 4)) targetY = 2 << 4;
+
+      if (targetY > (60 << 4)) targetY = 60 << 4;
       enemies[i].yCoord = targetY;
     } else {
       if (!enemies[i].returning) {
@@ -878,13 +769,6 @@ void updatePlaying() {
           enemies[i].xCoord = 120 << 4;
           enemies[i].yCoord = enemies[i].homeY + formationOffsetY;
           enemies[i].returning = true;
-
-          Serial.print(F("RETURN "));
-          Serial.print(i);
-          Serial.print(F(" X="));
-          Serial.print(enemies[i].xCoord >> 4);
-          Serial.print(F(" Y="));
-          Serial.println(enemies[i].yCoord >> 4);
         }
       } else {
         int16_t targetX = enemies[i].homeX + formationOffsetX;
@@ -898,27 +782,7 @@ void updatePlaying() {
         enemies[i].xCoord += dx / 8;
         enemies[i].yCoord += dy / 8;
 
-        if ((arduboy.frameCount % 30) == 0) {
-          Serial.print(F("RETMOVE "));
-          Serial.print(i);
-
-          Serial.print(F(" X="));
-          Serial.print(enemies[i].xCoord >> 4);
-
-          Serial.print(F(" Y="));
-          Serial.print(enemies[i].yCoord >> 4);
-
-          Serial.print(F(" TX="));
-          Serial.print(targetX >> 4);
-
-          Serial.print(F(" TY="));
-          Serial.println(targetY >> 4);
-        }
-
         if (abs(dx) < (3 << 4) && abs(dy) < (3 << 4)) {
-          Serial.print(F("REJOIN "));
-          Serial.println(i);
-
           enemies[i].xCoord = targetX;
           enemies[i].yCoord = targetY;
 
@@ -1001,13 +865,15 @@ void updatePlaying() {
         enemies[i].yCoord < playerY + (7 << 4)) {
       enemies[i].active = false;
 
-      Serial.print(F("KILL "));
-      Serial.print(i);
-      Serial.print(F(" HX="));
-      Serial.print(enemies[i].homeX >> 4);
-      Serial.print(F(" HY="));
-      Serial.println(enemies[i].homeY >> 4);
+      enemies[i].arriving = false;
+      enemies[i].diving = false;
+      enemies[i].returning = false;
+      enemies[i].queued = false;
+
+      spawnParticles(enemies[i].xCoord >> 4, enemies[i].yCoord >> 4, 10);
+
       spawnParticles(playerX >> 4, playerY >> 4, 8);
+
       playerHealth -= 34;
       screenInvertTimer = 10;
       beep.tone(beep.freq(80), 10);
@@ -1019,7 +885,7 @@ void updatePlaying() {
           gameState = GAMEOVER;
         } else {
           playerHealth = 100;
-          playerX = 0;
+          playerX = 4 << 4;
           playerY = 32 << 4;
           invulnTimer = 90;
         }
@@ -1038,29 +904,6 @@ void updatePlaying() {
       int16_t eX = enemies[i].xCoord >> 4;
       int16_t eY = enemies[i].yCoord >> 4;
       if (eX >= -8 && eX < 128 && eY >= -8 && eY < 64) {
-        if ((arduboy.frameCount % 120) == 0 && i >= 16) {
-          Serial.print(F("MAP "));
-          Serial.print(i);
-
-          Serial.print(F(" RAWX="));
-          Serial.print(enemies[i].xCoord >> 4);
-
-          Serial.print(F(" RAWY="));
-          Serial.print(enemies[i].yCoord >> 4);
-
-          Serial.print(F(" EX="));
-          Serial.print(eX);
-
-          Serial.print(F(" EY="));
-          Serial.print(eY);
-
-          Serial.print(F(" HX="));
-          Serial.print(enemies[i].homeX >> 4);
-
-          Serial.print(F(" HY="));
-          Serial.println(enemies[i].homeY >> 4);
-        }
-
         Sprites::drawSelfMasked(eX, eY, sprite, 0);
       }
     }
@@ -1096,7 +939,7 @@ void updatePlaying() {
               gameState = GAMEOVER;
             } else {
               playerHealth = 100;
-              playerX = 0;
+              playerX = 4 << 4;
               playerY = 32 << 4;
               invulnTimer = 90;
             }
@@ -1118,7 +961,7 @@ void updatePlaying() {
     }
   }
 
-  if (invulnTimer == 0 || (invulnTimer % 6 < 3)) {
+  if (invulnTimer == 0 || (invulnTimer % 12 < 6)) {
     int16_t pX = playerX >> 4;
     int16_t pY = playerY >> 4;
     if (pX >= -8 && pX < 128 && pY >= -8 && pY < 64) {
@@ -1146,10 +989,12 @@ void loop() {
     updateStars();
     arduboy.invert(false);
     Sprites::drawOverwrite(103, 0, Images::Galaga_Title, 0);
-    arduboy.setCursor(44, 25);
-    arduboy.print(F("GALAGA"));
-    arduboy.setCursor(34, 45);
-    arduboy.print(F("PRESS A/B"));
+    Sprites::drawOverwrite(24, 8, Images::LargePlayer, arduboy.frameCount % 2);
+
+    // arduboy.setCursor(44, 25);
+    // arduboy.print(F("GALAGA"));
+    // arduboy.setCursor(34, 45);
+    // arduboy.print(F("PRESS A/B"));
     if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
       resetGame();
       gameState = PLAYING;

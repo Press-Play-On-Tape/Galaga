@@ -147,7 +147,8 @@ formationFrame = 0;
       const uint8_t COL_SPACING = 10;
       const uint8_t ROW_SPACING = 9;
 
-      enemies[idx].homeX = (60 + (c * COL_SPACING)) << 4;
+      // enemies[idx].homeX = (60 + (c * COL_SPACING)) << 4;
+      enemies[idx].homeX = (72 + (c * COL_SPACING)) << 4;
 
       enemies[idx].homeY = ((6 + (r * ROW_SPACING)) + waveYShift) << 4;
 
@@ -772,8 +773,8 @@ if (abs(dx) < (10 << 4) &&
     enemies[i].diving = false;
     enemies[i].returning = true;
 
-    Serial.print(F("BREAKOFF "));
-    Serial.println(i);
+    // Serial.print(F("BREAKOFF "));
+    // Serial.println(i);
 
     continue;
 }
@@ -807,8 +808,8 @@ if (enemies[i].xCoord < (-16 << 4)) {
     enemies[i].diving = false;
     enemies[i].returning = true;
 
-    Serial.print(F("EXITRETURN "));
-    Serial.println(i);
+    // Serial.print(F("EXITRETURN "));
+    // Serial.println(i);
 }
       } else {
         int16_t targetX = enemies[i].homeX + formationOffsetX;
@@ -844,23 +845,23 @@ if (enemies[i].xCoord < (-16 << 4)) {
           enemies[i].active = false;
 enemies[i].active = false;
 
-Serial.print(F("DESTROY "));
-Serial.print(i);
+// Serial.print(F("DESTROY "));
+// Serial.print(i);
 
-Serial.print(F(" A="));
-Serial.print(enemies[i].active);
+// Serial.print(F(" A="));
+// Serial.print(enemies[i].active);
 
-Serial.print(F(" D="));
-Serial.print(enemies[i].diving);
+// Serial.print(F(" D="));
+// Serial.print(enemies[i].diving);
 
-Serial.print(F(" R="));
-Serial.print(enemies[i].returning);
+// Serial.print(F(" R="));
+// Serial.print(enemies[i].returning);
 
-Serial.print(F(" X="));
-Serial.print(enemies[i].xCoord >> 4);
+// Serial.print(F(" X="));
+// Serial.print(enemies[i].xCoord >> 4);
 
-Serial.print(F(" Y="));
-Serial.println(enemies[i].yCoord >> 4);		  
+// Serial.print(F(" Y="));
+// Serial.println(enemies[i].yCoord >> 4);		  
           spawnParticles(enemies[i].xCoord >> 4, enemies[i].yCoord >> 4, 4);
           score += (enemies[i].type + 1) * 25 * (enemies[i].diving ? 2 : 1);
           beep.tone(beep.freq(160), 4);
@@ -873,12 +874,37 @@ Serial.println(enemies[i].yCoord >> 4);
 
     if (mothership.active) {
       for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
-        if (pBullets[b].active &&
-            pBullets[b].xCoord >= mothership.xCoord + formationOffsetX &&
-            pBullets[b].xCoord <=
-                mothership.xCoord + formationOffsetX + (7 << 4) &&
-            pBullets[b].yCoord >= mothership.yCoord &&
-            pBullets[b].yCoord <= mothership.yCoord + (7 << 4)) {
+int16_t hitboxSize =
+    mothership.diving ? 14 : 7;
+
+if (pBullets[b].active &&
+    pBullets[b].xCoord >=
+        mothership.xCoord + formationOffsetX - (3 << 4) &&
+    pBullets[b].xCoord <=
+        mothership.xCoord + formationOffsetX +
+        (hitboxSize << 4) &&
+    pBullets[b].yCoord >=
+        mothership.yCoord - (3 << 4) &&
+    pBullets[b].yCoord <=
+        mothership.yCoord +
+        (hitboxSize << 4)) {
+
+            if (mothership.diving &&
+    pBullets[b].active) {
+
+    Serial.print(F("MS "));
+    Serial.print((mothership.xCoord + formationOffsetX) >> 4);
+
+    Serial.print(F(","));
+    Serial.print(mothership.yCoord >> 4);
+
+    Serial.print(F(" BULLET "));
+    Serial.print(pBullets[b].xCoord >> 4);
+
+    Serial.print(F(","));
+    Serial.println(pBullets[b].yCoord >> 4);
+}
+
           pBullets[b].active = false;
           mothership.hp--;
           if (mothership.hp == 0) {
@@ -924,32 +950,32 @@ Serial.println(enemies[i].yCoord >> 4);
         enemies[i].yCoord < playerY + (7 << 4)) {
 
 		enemies[i].active = false;
-		Serial.print(F("COLLISION "));
-Serial.print(i);
+// 		Serial.print(F("COLLISION "));
+// Serial.print(i);
 
-Serial.print(F(" X="));
-Serial.print(enemies[i].xCoord >> 4);
+// Serial.print(F(" X="));
+// Serial.print(enemies[i].xCoord >> 4);
 
-Serial.print(F(" Y="));
-Serial.print(enemies[i].yCoord >> 4);
+// Serial.print(F(" Y="));
+// Serial.print(enemies[i].yCoord >> 4);
 
-Serial.print(F(" H="));
-Serial.print(playerHealth);
+// Serial.print(F(" H="));
+// Serial.print(playerHealth);
 
-Serial.print(F(" T="));
-Serial.print(enemies[i].type);
+// Serial.print(F(" T="));
+// Serial.print(enemies[i].type);
 
-Serial.print(F(" A="));
-Serial.print(enemies[i].active);
+// Serial.print(F(" A="));
+// Serial.print(enemies[i].active);
 
-Serial.print(F(" D="));
-Serial.print(enemies[i].diving);
+// Serial.print(F(" D="));
+// Serial.print(enemies[i].diving);
 
-Serial.print(F(" R="));
-Serial.print(enemies[i].returning);
+// Serial.print(F(" R="));
+// Serial.print(enemies[i].returning);
 
-Serial.print(F(" Q="));
-Serial.println(enemies[i].queued);
+// Serial.print(F(" Q="));
+// Serial.println(enemies[i].queued);
 
 
 		enemies[i].xCoord = -1000;
@@ -1000,20 +1026,20 @@ if ((eX >> 0) <= ((playerX >> 4) + 8) &&
 (eY >> 0) <= ((playerY >> 4) + 8) &&
 (eY >> 0) >= ((playerY >> 4) - 8)) {
 
-Serial.print(F("DRAW_NEAR_PLAYER "));
-Serial.print(i);
+// Serial.print(F("DRAW_NEAR_PLAYER "));
+// Serial.print(i);
 
-Serial.print(F(" ACTIVE="));
-Serial.print(enemies[i].active);
+// Serial.print(F(" ACTIVE="));
+// Serial.print(enemies[i].active);
 
-Serial.print(F(" ARR="));
-Serial.print(enemies[i].arriving);
+// Serial.print(F(" ARR="));
+// Serial.print(enemies[i].arriving);
 
-Serial.print(F(" DIV="));
-Serial.print(enemies[i].diving);
+// Serial.print(F(" DIV="));
+// Serial.print(enemies[i].diving);
 
-Serial.print(F(" RET="));
-Serial.println(enemies[i].returning);
+// Serial.print(F(" RET="));
+// Serial.println(enemies[i].returning);
 }
       }
     }

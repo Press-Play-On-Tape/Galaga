@@ -166,31 +166,55 @@ void initWave() {
 
       enemies[idx].spawnSide = side;
 
+      // switch (side) {
+      //   case 0:  // left
+
+      //     enemies[idx].xCoord = -24 << 4;
+
+      //     enemies[idx].yCoord = ((enemies[idx].homeY >> 4) + random(-6, 7))
+      //                           << 4;
+
+      //     break;
+
+      //   case 1:  // right
+
+      //     enemies[idx].xCoord = 144 << 4;
+
+      //     enemies[idx].yCoord = ((enemies[idx].homeY >> 4) + random(-6, 7))
+      //                           << 4;
+
+      //     break;
+
+      //   default:  // top
+
+      //     enemies[idx].xCoord = ((enemies[idx].homeX >> 4) + random(-20, 21))
+      //                           << 4;
+
+      //     enemies[idx].yCoord = -24 << 4;
+
+      //     break;
+      // }
+
       switch (side) {
-        case 0:  // left
+        case 0:  // far left
 
-          enemies[idx].xCoord = -24 << 4;
-
-          enemies[idx].yCoord = ((enemies[idx].homeY >> 4) + random(-6, 7))
-                                << 4;
+          enemies[idx].xCoord = -40 << 4;
+          enemies[idx].yCoord = random(4, 56) << 4;
 
           break;
 
-        case 1:  // right
+        case 1:  // far right
 
-          enemies[idx].xCoord = 144 << 4;
-
-          enemies[idx].yCoord = ((enemies[idx].homeY >> 4) + random(-6, 7))
-                                << 4;
+          enemies[idx].xCoord = 168 << 4;
+          enemies[idx].yCoord = random(4, 56) << 4;
 
           break;
 
         default:  // top
 
-          enemies[idx].xCoord = ((enemies[idx].homeX >> 4) + random(-20, 21))
-                                << 4;
+          enemies[idx].xCoord = random(40, 100) << 4;
 
-          enemies[idx].yCoord = -24 << 4;
+          enemies[idx].yCoord = -32 << 4;
 
           break;
       }
@@ -507,9 +531,18 @@ void updatePlaying() {
     uint8_t released = 0;
     for (uint8_t i = 0; i < MAX_ENEMIES && released < releaseCount; i++) {
       if (enemies[i].active && enemies[i].queued) {
+        // enemies[i].queued = false;
+        // enemies[i].arriving = true;
+        // enemies[i].entryPhase = 0;
         enemies[i].queued = false;
         enemies[i].arriving = true;
         enemies[i].entryPhase = 0;
+
+        // enemies[i].targetX =
+        //     enemies[i].homeX + formationOffsetX;
+
+        // enemies[i].targetY =
+        //     enemies[i].homeY + formationOffsetY;
         released++;
       }
     }
@@ -674,540 +707,588 @@ void updatePlaying() {
     // }
 
     if (enemies[i].arriving) {
+      // enemies[i].entryPhase++;
+
+      // int16_t targetX = enemies[i].homeX + formationOffsetX;
+
+      // int16_t targetY = enemies[i].homeY + formationOffsetY;
+
+      // int16_t dx = targetX - enemies[i].xCoord;
+
+      // int16_t dy = targetY - enemies[i].yCoord;
+
+      // int16_t curve = 0;
+
+      // if (enemies[i].spawnSide == 0) {
+      //   curve = sin(enemies[i].entryPhase * 0.08f) * (20 << 4);
+
+      //   enemies[i].xCoord += 60;
+
+      //   if (dy > 0)
+      //     enemies[i].yCoord += 20;
+      //   else
+      //     enemies[i].yCoord -= 20;
+
+      //   enemies[i].yCoord += curve / 12;
+
+      // } else if (enemies[i].spawnSide == 1) {
+      //   curve = sin(enemies[i].entryPhase * 0.08f) * (20 << 4);
+
+      //   enemies[i].xCoord -= 60;
+
+      //   if (dy > 0)
+      //     enemies[i].yCoord += 20;
+      //   else
+      //     enemies[i].yCoord -= 20;
+
+      //   enemies[i].yCoord += curve / 12;
+
+      // } else {
+      //   curve = sin(enemies[i].entryPhase * 0.08f) * (24 << 4);
+
+      //   enemies[i].yCoord += 60;
+
+      //   if (dx > 0)
+      //     enemies[i].xCoord += 20;
+      //   else
+      //     enemies[i].xCoord -= 20;
+
+      //   enemies[i].xCoord += curve / 12;
+      // }
+
+      // enemies[i].xCoord += dx / 12;
+      // enemies[i].yCoord += dy / 12;
+
       enemies[i].entryPhase++;
 
       int16_t targetX = enemies[i].homeX + formationOffsetX;
 
       int16_t targetY = enemies[i].homeY + formationOffsetY;
-
       int16_t dx = targetX - enemies[i].xCoord;
 
       int16_t dy = targetY - enemies[i].yCoord;
 
-      int16_t curve = 0;
+      int16_t curveX = 0;
+      int16_t curveY = 0;
 
-      if (enemies[i].spawnSide == 0) {
-        curve = sin(enemies[i].entryPhase * 0.08f) * (20 << 4);
+      switch (enemies[i].spawnSide) {
+        case 0:  // left spiral
 
-        enemies[i].xCoord += 60;
+          curveY = (int16_t)(sin(enemies[i].entryPhase * 0.06f) * (28 << 4));
 
-        if (dy > 0)
-          enemies[i].yCoord += 20;
-        else
-          enemies[i].yCoord -= 20;
+          curveX = (int16_t)(cos(enemies[i].entryPhase * 0.05f) * (10 << 4));
 
-        enemies[i].yCoord += curve / 12;
+          break;
 
-      } else if (enemies[i].spawnSide == 1) {
-        curve = sin(enemies[i].entryPhase * 0.08f) * (20 << 4);
+        case 1:  // right spiral
 
-        enemies[i].xCoord -= 60;
+          curveY = (int16_t)(sin(enemies[i].entryPhase * 0.06f) * (28 << 4));
 
-        if (dy > 0)
-          enemies[i].yCoord += 20;
-        else
-          enemies[i].yCoord -= 20;
+          curveX = -(int16_t)(cos(enemies[i].entryPhase * 0.05f) * (10 << 4));
 
-        enemies[i].yCoord += curve / 12;
+          break;
 
-      } else {
-        curve = sin(enemies[i].entryPhase * 0.08f) * (24 << 4);
+        default:  // top dive
 
-        enemies[i].yCoord += 60;
+          curveX = (int16_t)(sin(enemies[i].entryPhase * 0.08f) * (22 << 4));
 
-        if (dx > 0)
-          enemies[i].xCoord += 20;
-        else
-          enemies[i].xCoord -= 20;
-
-        enemies[i].xCoord += curve / 12;
+          break;
       }
 
-      enemies[i].xCoord += dx / 12;
-      enemies[i].yCoord += dy / 12;
+      enemies[i].xCoord += dx / 10 + curveX / 12;
 
+      enemies[i].yCoord += dy / 10 + curveY / 12;
+
+      // if (abs(dx) < (8 << 4) && abs(dy) < (8 << 4)) {
+      //   if (abs(dx) < (12 << 4) &&
+      // abs(dy) < (12 << 4)) {
+      //     enemies[i].arriving = false;
+      //     enemies[i].xCoord = targetX;
+      //     enemies[i].yCoord = targetY;
+      //   }
+      // }
       if (abs(dx) < (8 << 4) && abs(dy) < (8 << 4)) {
         enemies[i].arriving = false;
-        enemies[i].xCoord = targetX;
+
+        enemies[i].xCoord = enemies[i].homeX + formationOffsetX;
+
+        enemies[i].yCoord = enemies[i].homeY + formationOffsetY;
+      }
+    }
+      else if (!enemies[i].diving) {
+        enemies[i].xCoord = enemies[i].homeX + formationOffsetX;
+        int16_t targetY = enemies[i].homeY + formationOffsetY;
+        if (targetY < (2 << 4)) targetY = 2 << 4;
+        //   if (targetY > (54 << 4)) targetY = 54 << 4;
+        if (targetY < (2 << 4)) targetY = 2 << 4;
+
+        if (targetY > (60 << 4)) targetY = 60 << 4;
         enemies[i].yCoord = targetY;
-      }
-    }
-
-    else if (!enemies[i].diving) {
-      enemies[i].xCoord = enemies[i].homeX + formationOffsetX;
-      int16_t targetY = enemies[i].homeY + formationOffsetY;
-      if (targetY < (2 << 4)) targetY = 2 << 4;
-      //   if (targetY > (54 << 4)) targetY = 54 << 4;
-      if (targetY < (2 << 4)) targetY = 2 << 4;
-
-      if (targetY > (60 << 4)) targetY = 60 << 4;
-      enemies[i].yCoord = targetY;
-    } else {
-      if (!enemies[i].returning) {
-        enemies[i].divePhase += 1;
-        int16_t diveSpeed = 10 + (wave * 1) + (survivalTimer / 300);
-
-        int16_t dx = playerX - enemies[i].xCoord;
-
-        int16_t dy = playerY - enemies[i].yCoord;
-
-        int32_t len =
-            max((int32_t)1, (int32_t)sqrt((float)dx * dx + (float)dy * dy));
-
-        enemies[i].xCoord += (dx * diveSpeed) / len;
-
-        enemies[i].yCoord += (dy * diveSpeed) / len;
-
-        if (enemies[i].xCoord > (160 << 4)) {
-          enemies[i].diving = false;
-          enemies[i].returning = true;
-        }
-
-        if (enemies[i].xCoord < (-32 << 4)) {
-          enemies[i].diving = false;
-          enemies[i].returning = true;
-        }
-
-        /*
-         * Once an enemy reaches the player's area,
-         * immediately start the return phase.
-         */
-
-        if (abs(dx) < (10 << 4) && abs(dy) < (10 << 4)) {
-          enemies[i].diving = false;
-          enemies[i].returning = true;
-
-          // Serial.print(F("BREAKOFF "));
-          // Serial.println(i);
-
-          continue;
-        }
-        // if (enemies[i].divePattern == 0) {
-        //   enemies[i].yCoord +=
-        //       (int16_t)(sin((float)enemies[i].divePhase * 0.06) * 16.0 *
-        //                 enemies[i].diveDirection);
-        // } else if (enemies[i].divePattern == 1) {
-        //   enemies[i].yCoord +=
-        //       (int16_t)(cos((float)enemies[i].divePhase * 0.08) * 20.0);
-        // } else {
-        //   int16_t targetDir = (playerY > enemies[i].yCoord) ? 1 : -1;
-        //   enemies[i].yCoord += targetDir * 10;
-        // }
-
-                if (enemies[i].divePattern == 0) {
-          enemies[i].xCoord +=
-              (int16_t)(
-                  sin((float)enemies[i].divePhase * 0.06) *
-                  6.0 *
-                  enemies[i].diveDirection);
-        }
-        else if (enemies[i].divePattern == 1) {
-          enemies[i].xCoord +=
-              (int16_t)(
-                  cos((float)enemies[i].divePhase * 0.08) *
-                  8.0);
-        }
-
-        if (enemies[i].yCoord < (2 << 4)) enemies[i].yCoord = 2 << 4;
-        if (enemies[i].yCoord > (54 << 4)) enemies[i].yCoord = 54 << 4;
-
-        uint8_t firingThreshold = wave + (survivalTimer / 600);
-        // if (random(0, 150) < firingThreshold) {
-
-        //     Serial.print(F("SHOOTER "));
-        //     Serial.print(i);
-
-        //     Serial.print(F(" X="));
-        //     Serial.print(enemies[i].xCoord >> 4);
-
-        //     Serial.print(F(" Y="));
-        //     Serial.print(enemies[i].yCoord >> 4);
-
-        //     Serial.print(F(" D="));
-        //     Serial.print(enemies[i].diving);
-
-        //     Serial.print(F(" R="));
-        //     Serial.println(enemies[i].returning);
-
-        //     fireEnemyBullet(
-        //         enemies[i].xCoord,
-        //         enemies[i].yCoord);
-        // }
-
-        int16_t dxPlayer = abs((playerX >> 4) - (enemies[i].xCoord >> 4));
-
-        if (dxPlayer < 40) {
-          if (random(0, 150) < firingThreshold) {
-            fireEnemyBullet(enemies[i].xCoord, enemies[i].yCoord);
-          }
-        }
-
-        if (enemies[i].xCoord < (-16 << 4)) {
-          enemies[i].xCoord = 120 << 4;
-          enemies[i].yCoord = enemies[i].homeY + formationOffsetY;
-
-          enemies[i].diving = false;
-          enemies[i].returning = true;
-
-          // Serial.print(F("EXITRETURN "));
-          // Serial.println(i);
-        }
       } else {
-        int16_t targetX = enemies[i].homeX + formationOffsetX;
+        if (!enemies[i].returning) {
+          enemies[i].divePhase += 1;
+          int16_t diveSpeed = 10 + (wave * 1) + (survivalTimer / 300);
 
-        int16_t targetY = enemies[i].homeY;
+          int16_t dx = playerX - enemies[i].xCoord;
 
-        int16_t dx = targetX - enemies[i].xCoord;
+          int16_t dy = playerY - enemies[i].yCoord;
 
-        int16_t dy = targetY - enemies[i].yCoord;
+          int32_t len =
+              max((int32_t)1, (int32_t)sqrt((float)dx * dx + (float)dy * dy));
 
-        enemies[i].xCoord += dx / 8;
-        enemies[i].yCoord += dy / 8;
+          enemies[i].xCoord += (dx * diveSpeed) / len;
 
-        if (abs(dx) < (3 << 4) && abs(dy) < (3 << 4)) {
-          enemies[i].xCoord = targetX;
-          enemies[i].yCoord = targetY;
+          enemies[i].yCoord += (dy * diveSpeed) / len;
 
-          enemies[i].diving = false;
-          enemies[i].returning = false;
-        }
-      }
-    }
-
-    uint8_t enemySz = (enemies[i].type == 2) ? 7 : 6;
-    for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
-      if (pBullets[b].active && pBullets[b].xCoord >= enemies[i].xCoord &&
-          pBullets[b].xCoord <= enemies[i].xCoord + (enemySz << 4) &&
-          pBullets[b].yCoord >= enemies[i].yCoord &&
-          pBullets[b].yCoord <= enemies[i].yCoord + (enemySz << 4)) {
-        pBullets[b].active = false;
-        enemies[i].hp--;
-        if (enemies[i].hp == 0) {
-          enemies[i].active = false;
-          enemies[i].active = false;
-
-          // Serial.print(F("DESTROY "));
-          // Serial.print(i);
-
-          // Serial.print(F(" A="));
-          // Serial.print(enemies[i].active);
-
-          // Serial.print(F(" D="));
-          // Serial.print(enemies[i].diving);
-
-          // Serial.print(F(" R="));
-          // Serial.print(enemies[i].returning);
-
-          // Serial.print(F(" X="));
-          // Serial.print(enemies[i].xCoord >> 4);
-
-          // Serial.print(F(" Y="));
-          // Serial.println(enemies[i].yCoord >> 4);
-          spawnParticles(enemies[i].xCoord >> 4, enemies[i].yCoord >> 4, 4);
-          score += (enemies[i].type + 1) * 25 * (enemies[i].diving ? 2 : 1);
-          beep.tone(beep.freq(160), 4);
-        } else {
-          beep.tone(beep.freq(500), 2);
-        }
-        break;
-      }
-    }
-
-    if (mothership.active) {
-      bool msCollision = mothership.xCoord + (7 << 4) > playerX &&
-                         mothership.xCoord < playerX + (7 << 4) &&
-                         mothership.yCoord + (7 << 4) > playerY &&
-                         mothership.yCoord < playerY + (7 << 4);
-
-      if (msCollision) {
-        Serial.print(F("MS_COLLISION "));
-        Serial.print(mothership.xCoord >> 4);
-        Serial.print(F(","));
-        Serial.println(mothership.yCoord >> 4);
-      }
-
-      if (msCollision && invulnTimer == 0) {
-        mothership.active = false;
-
-        spawnParticles(mothership.xCoord >> 4, mothership.yCoord >> 4, 12);
-
-        spawnParticles(playerX >> 4, playerY >> 4, 12);
-
-        playerHealth -= 50;
-
-        screenInvertTimer = 10;
-
-        beep.tone(beep.freq(80), 15);
-
-        invulnTimer = 80;
-      }
-
-      for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
-        int16_t hitboxSize = mothership.diving ? 14 : 7;
-
-        if (pBullets[b].active &&
-            pBullets[b].xCoord >=
-                mothership.xCoord + formationOffsetX - (3 << 4) &&
-            pBullets[b].xCoord <=
-                mothership.xCoord + formationOffsetX + (hitboxSize << 4) &&
-            pBullets[b].yCoord >= mothership.yCoord - (3 << 4) &&
-            pBullets[b].yCoord <= mothership.yCoord + (hitboxSize << 4)) {
-          if (mothership.diving && pBullets[b].active) {
-            Serial.print(F("MS "));
-            Serial.print((mothership.xCoord + formationOffsetX) >> 4);
-
-            Serial.print(F(","));
-            Serial.print(mothership.yCoord >> 4);
-
-            Serial.print(F(" BULLET "));
-            Serial.print(pBullets[b].xCoord >> 4);
-
-            Serial.print(F(","));
-            Serial.println(pBullets[b].yCoord >> 4);
+          if (enemies[i].xCoord > (160 << 4)) {
+            enemies[i].diving = false;
+            enemies[i].returning = true;
           }
 
+          if (enemies[i].xCoord < (-32 << 4)) {
+            enemies[i].diving = false;
+            enemies[i].returning = true;
+          }
+
+          /*
+           * Once an enemy reaches the player's area,
+           * immediately start the return phase.
+           */
+
+          if (abs(dx) < (10 << 4) && abs(dy) < (10 << 4)) {
+            enemies[i].diving = false;
+            enemies[i].returning = true;
+
+            // Serial.print(F("BREAKOFF "));
+            // Serial.println(i);
+
+            continue;
+          }
+          // if (enemies[i].divePattern == 0) {
+          //   enemies[i].yCoord +=
+          //       (int16_t)(sin((float)enemies[i].divePhase * 0.06) * 16.0 *
+          //                 enemies[i].diveDirection);
+          // } else if (enemies[i].divePattern == 1) {
+          //   enemies[i].yCoord +=
+          //       (int16_t)(cos((float)enemies[i].divePhase * 0.08) * 20.0);
+          // } else {
+          //   int16_t targetDir = (playerY > enemies[i].yCoord) ? 1 : -1;
+          //   enemies[i].yCoord += targetDir * 10;
+          // }
+
+          if (enemies[i].divePattern == 0) {
+            enemies[i].xCoord +=
+                (int16_t)(sin((float)enemies[i].divePhase * 0.06) * 6.0 *
+                          enemies[i].diveDirection);
+          } else if (enemies[i].divePattern == 1) {
+            enemies[i].xCoord +=
+                (int16_t)(cos((float)enemies[i].divePhase * 0.08) * 8.0);
+          }
+
+          if (enemies[i].yCoord < (2 << 4)) enemies[i].yCoord = 2 << 4;
+          if (enemies[i].yCoord > (54 << 4)) enemies[i].yCoord = 54 << 4;
+
+          uint8_t firingThreshold = wave + (survivalTimer / 600);
+          // if (random(0, 150) < firingThreshold) {
+
+          //     Serial.print(F("SHOOTER "));
+          //     Serial.print(i);
+
+          //     Serial.print(F(" X="));
+          //     Serial.print(enemies[i].xCoord >> 4);
+
+          //     Serial.print(F(" Y="));
+          //     Serial.print(enemies[i].yCoord >> 4);
+
+          //     Serial.print(F(" D="));
+          //     Serial.print(enemies[i].diving);
+
+          //     Serial.print(F(" R="));
+          //     Serial.println(enemies[i].returning);
+
+          //     fireEnemyBullet(
+          //         enemies[i].xCoord,
+          //         enemies[i].yCoord);
+          // }
+
+          int16_t dxPlayer = abs((playerX >> 4) - (enemies[i].xCoord >> 4));
+
+          if (dxPlayer < 40) {
+            if (random(0, 150) < firingThreshold) {
+              fireEnemyBullet(enemies[i].xCoord, enemies[i].yCoord);
+            }
+          }
+
+          if (enemies[i].xCoord < (-16 << 4)) {
+            enemies[i].xCoord = 120 << 4;
+            enemies[i].yCoord = enemies[i].homeY + formationOffsetY;
+
+            enemies[i].diving = false;
+            enemies[i].returning = true;
+
+            // Serial.print(F("EXITRETURN "));
+            // Serial.println(i);
+          }
+        } else {
+          int16_t targetX = enemies[i].homeX + formationOffsetX;
+
+          int16_t targetY = enemies[i].homeY;
+
+          int16_t dx = targetX - enemies[i].xCoord;
+
+          int16_t dy = targetY - enemies[i].yCoord;
+
+          enemies[i].xCoord += dx / 8;
+          enemies[i].yCoord += dy / 8;
+
+          if (abs(dx) < (3 << 4) && abs(dy) < (3 << 4)) {
+            enemies[i].xCoord = targetX;
+            enemies[i].yCoord = targetY;
+
+            enemies[i].diving = false;
+            enemies[i].returning = false;
+          }
+        }
+      
+
+    }
+
+      uint8_t enemySz = (enemies[i].type == 2) ? 7 : 6;
+      for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
+        if (pBullets[b].active && pBullets[b].xCoord >= enemies[i].xCoord &&
+            pBullets[b].xCoord <= enemies[i].xCoord + (enemySz << 4) &&
+            pBullets[b].yCoord >= enemies[i].yCoord &&
+            pBullets[b].yCoord <= enemies[i].yCoord + (enemySz << 4)) {
           pBullets[b].active = false;
-          mothership.hp--;
-          if (mothership.hp == 0) {
-            mothership.active = false;
-            spawnParticles((mothership.xCoord + formationOffsetX) >> 4,
-                           mothership.yCoord >> 4, 8);
-            score += 200;
-            if (mothership.diving) dualShooterTimer = 600;
-            beep.tone(beep.freq(700), 8);
+          enemies[i].hp--;
+          if (enemies[i].hp == 0) {
+            enemies[i].active = false;
+            enemies[i].active = false;
+
+            // Serial.print(F("DESTROY "));
+            // Serial.print(i);
+
+            // Serial.print(F(" A="));
+            // Serial.print(enemies[i].active);
+
+            // Serial.print(F(" D="));
+            // Serial.print(enemies[i].diving);
+
+            // Serial.print(F(" R="));
+            // Serial.print(enemies[i].returning);
+
+            // Serial.print(F(" X="));
+            // Serial.print(enemies[i].xCoord >> 4);
+
+            // Serial.print(F(" Y="));
+            // Serial.println(enemies[i].yCoord >> 4);
+            spawnParticles(enemies[i].xCoord >> 4, enemies[i].yCoord >> 4, 4);
+            score += (enemies[i].type + 1) * 25 * (enemies[i].diving ? 2 : 1);
+            beep.tone(beep.freq(160), 4);
           } else {
-            beep.tone(beep.freq(600), 3);
+            beep.tone(beep.freq(500), 2);
           }
           break;
         }
       }
-    }
 
-    bool canCollide = enemies[i].diving;
-    if (!canCollide && !enemies[i].arriving) {
-      bool isLeftmostInRow = true;
-      for (uint8_t other = 0; other < MAX_ENEMIES; other++) {
-        if (enemies[other].active && !enemies[other].diving &&
-            !enemies[other].arriving && !enemies[other].queued &&
-            abs(enemies[other].homeY - enemies[i].homeY) < (8 << 4)) {
-          if (enemies[other].homeX < enemies[i].homeX) {
-            isLeftmostInRow = false;
+      if (mothership.active) {
+        bool msCollision = mothership.xCoord + (7 << 4) > playerX &&
+                           mothership.xCoord < playerX + (7 << 4) &&
+                           mothership.yCoord + (7 << 4) > playerY &&
+                           mothership.yCoord < playerY + (7 << 4);
+
+        if (msCollision) {
+          Serial.print(F("MS_COLLISION "));
+          Serial.print(mothership.xCoord >> 4);
+          Serial.print(F(","));
+          Serial.println(mothership.yCoord >> 4);
+        }
+
+        if (msCollision && invulnTimer == 0) {
+          mothership.active = false;
+
+          spawnParticles(mothership.xCoord >> 4, mothership.yCoord >> 4, 12);
+
+          spawnParticles(playerX >> 4, playerY >> 4, 12);
+
+          playerHealth -= 50;
+
+          screenInvertTimer = 10;
+
+          beep.tone(beep.freq(80), 15);
+
+          invulnTimer = 80;
+        }
+
+        for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
+          int16_t hitboxSize = mothership.diving ? 14 : 7;
+
+          if (pBullets[b].active &&
+              pBullets[b].xCoord >=
+                  mothership.xCoord + formationOffsetX - (3 << 4) &&
+              pBullets[b].xCoord <=
+                  mothership.xCoord + formationOffsetX + (hitboxSize << 4) &&
+              pBullets[b].yCoord >= mothership.yCoord - (3 << 4) &&
+              pBullets[b].yCoord <= mothership.yCoord + (hitboxSize << 4)) {
+            if (mothership.diving && pBullets[b].active) {
+              Serial.print(F("MS "));
+              Serial.print((mothership.xCoord + formationOffsetX) >> 4);
+
+              Serial.print(F(","));
+              Serial.print(mothership.yCoord >> 4);
+
+              Serial.print(F(" BULLET "));
+              Serial.print(pBullets[b].xCoord >> 4);
+
+              Serial.print(F(","));
+              Serial.println(pBullets[b].yCoord >> 4);
+            }
+
+            pBullets[b].active = false;
+            mothership.hp--;
+            if (mothership.hp == 0) {
+              mothership.active = false;
+              spawnParticles((mothership.xCoord + formationOffsetX) >> 4,
+                             mothership.yCoord >> 4, 8);
+              score += 200;
+              if (mothership.diving) dualShooterTimer = 600;
+              beep.tone(beep.freq(700), 8);
+            } else {
+              beep.tone(beep.freq(600), 3);
+            }
             break;
           }
         }
       }
-      if (isLeftmostInRow) canCollide = true;
-    }
 
-    // --- Broad-phase Coarse Check & Fine-phase Collision Check ---
-    bool coarseOverlap = (abs((enemies[i].xCoord >> 4) - (playerX >> 4)) < 8) &&
-                         (abs((enemies[i].yCoord >> 4) - (playerY >> 4)) < 8);
-
-    if (coarseOverlap && enemies[i].active && !enemies[i].arriving &&
-        invulnTimer == 0 && canCollide &&
-        enemies[i].xCoord + (enemySz << 4) > playerX &&
-        enemies[i].xCoord < playerX + (7 << 4) &&
-        enemies[i].yCoord + (enemySz << 4) > playerY &&
-        enemies[i].yCoord < playerY + (7 << 4)) {
-      enemies[i].active = false;
-      // 		Serial.print(F("COLLISION "));
-      // Serial.print(i);
-
-      // Serial.print(F(" X="));
-      // Serial.print(enemies[i].xCoord >> 4);
-
-      // Serial.print(F(" Y="));
-      // Serial.print(enemies[i].yCoord >> 4);
-
-      // Serial.print(F(" H="));
-      // Serial.print(playerHealth);
-
-      // Serial.print(F(" T="));
-      // Serial.print(enemies[i].type);
-
-      // Serial.print(F(" A="));
-      // Serial.print(enemies[i].active);
-
-      // Serial.print(F(" D="));
-      // Serial.print(enemies[i].diving);
-
-      // Serial.print(F(" R="));
-      // Serial.print(enemies[i].returning);
-
-      // Serial.print(F(" Q="));
-      // Serial.println(enemies[i].queued);
-
-      enemies[i].xCoord = -1000;
-      enemies[i].yCoord = -1000;
-
-      enemies[i].arriving = false;
-      enemies[i].diving = false;
-      enemies[i].returning = false;
-      enemies[i].queued = false;
-
-      spawnParticles(enemies[i].xCoord >> 4, enemies[i].yCoord >> 4, 10);
-
-      spawnParticles(playerX >> 4, playerY >> 4, 8);
-
-      playerHealth -= 34;
-      screenInvertTimer = 10;
-      beep.tone(beep.freq(80), 10);
-      if (playerHealth <= 0) {
-        lives--;
-        spawnParticles(playerX >> 4, playerY >> 4, 20);
-        beep.tone(beep.freq(50), 25);
-        if (lives == 0) {
-          gameState = GAMEOVER;
-        } else {
-          playerHealth = 100;
-          playerX = 4 << 4;
-          playerY = 32 << 4;
-          invulnTimer = 90;
-        }
-      } else {
-        invulnTimer = 80;
-      }
-    }
-
-    if (enemies[i].active) {
-      const uint8_t* sprite = Images::beeSprite;
-      if (enemies[i].type == 1)
-        sprite = Images::butterflySprite;
-      else if (enemies[i].type == 2)
-        sprite = Images::bossSprite;
-
-      int16_t eX = enemies[i].xCoord >> 4;
-      int16_t eY = enemies[i].yCoord >> 4;
-      if (eX >= -8 && eX < 128 && eY >= -8 && eY < 64) {
-        Sprites::drawSelfMasked(eX, eY, sprite, 0);
-        if ((eX >> 0) <= ((playerX >> 4) + 8) &&
-            (eX >> 0) >= ((playerX >> 4) - 8) &&
-            (eY >> 0) <= ((playerY >> 4) + 8) &&
-            (eY >> 0) >= ((playerY >> 4) - 8)) {
-          // Serial.print(F("DRAW_NEAR_PLAYER "));
-          // Serial.print(i);
-
-          // Serial.print(F(" ACTIVE="));
-          // Serial.print(enemies[i].active);
-
-          // Serial.print(F(" ARR="));
-          // Serial.print(enemies[i].arriving);
-
-          // Serial.print(F(" DIV="));
-          // Serial.print(enemies[i].diving);
-
-          // Serial.print(F(" RET="));
-          // Serial.println(enemies[i].returning);
-        }
-      }
-    }
-  }
-
-  if (activeEnemies == 0 && !mothership.active) {
-    wave++;
-    initWave();
-  }
-
-  for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) {
-    if (eBullets[i].active) {
-      eBullets[i].xCoord += eBullets[i].vx;
-      if (eBullets[i].xCoord < 0) {
-        eBullets[i].active = false;
-      } else {
-        arduboy.drawFastHLine(eBullets[i].xCoord >> 4, eBullets[i].yCoord >> 4,
-                              3, WHITE);
-        if (invulnTimer == 0 && eBullets[i].xCoord >= playerX &&
-            eBullets[i].xCoord <= playerX + (7 << 4) &&
-            eBullets[i].yCoord >= playerY &&
-            eBullets[i].yCoord <= playerY + (7 << 4)) {
-          eBullets[i].active = false;
-          spawnParticles(playerX >> 4, playerY >> 4, 8);
-          playerHealth -= 34;
-          screenInvertTimer = 10;
-          beep.tone(beep.freq(80), 10);
-          if (playerHealth <= 0) {
-            lives--;
-            spawnParticles(playerX >> 4, playerY >> 4, 20);
-            beep.tone(beep.freq(50), 25);
-            if (lives == 0) {
-              gameState = GAMEOVER;
-            } else {
-              playerHealth = 100;
-              playerX = 4 << 4;
-              playerY = 32 << 4;
-              invulnTimer = 90;
+      bool canCollide = enemies[i].diving;
+      if (!canCollide && !enemies[i].arriving) {
+        bool isLeftmostInRow = true;
+        for (uint8_t other = 0; other < MAX_ENEMIES; other++) {
+          if (enemies[other].active && !enemies[other].diving &&
+              !enemies[other].arriving && !enemies[other].queued &&
+              abs(enemies[other].homeY - enemies[i].homeY) < (8 << 4)) {
+            if (enemies[other].homeX < enemies[i].homeX) {
+              isLeftmostInRow = false;
+              break;
             }
+          }
+        }
+        if (isLeftmostInRow) canCollide = true;
+      }
+
+      // --- Broad-phase Coarse Check & Fine-phase Collision Check ---
+      bool coarseOverlap =
+          (abs((enemies[i].xCoord >> 4) - (playerX >> 4)) < 8) &&
+          (abs((enemies[i].yCoord >> 4) - (playerY >> 4)) < 8);
+
+      if (coarseOverlap && enemies[i].active && !enemies[i].arriving &&
+          invulnTimer == 0 && canCollide &&
+          enemies[i].xCoord + (enemySz << 4) > playerX &&
+          enemies[i].xCoord < playerX + (7 << 4) &&
+          enemies[i].yCoord + (enemySz << 4) > playerY &&
+          enemies[i].yCoord < playerY + (7 << 4)) {
+        enemies[i].active = false;
+        // 		Serial.print(F("COLLISION "));
+        // Serial.print(i);
+
+        // Serial.print(F(" X="));
+        // Serial.print(enemies[i].xCoord >> 4);
+
+        // Serial.print(F(" Y="));
+        // Serial.print(enemies[i].yCoord >> 4);
+
+        // Serial.print(F(" H="));
+        // Serial.print(playerHealth);
+
+        // Serial.print(F(" T="));
+        // Serial.print(enemies[i].type);
+
+        // Serial.print(F(" A="));
+        // Serial.print(enemies[i].active);
+
+        // Serial.print(F(" D="));
+        // Serial.print(enemies[i].diving);
+
+        // Serial.print(F(" R="));
+        // Serial.print(enemies[i].returning);
+
+        // Serial.print(F(" Q="));
+        // Serial.println(enemies[i].queued);
+
+        enemies[i].xCoord = -1000;
+        enemies[i].yCoord = -1000;
+
+        enemies[i].arriving = false;
+        enemies[i].diving = false;
+        enemies[i].returning = false;
+        enemies[i].queued = false;
+
+        spawnParticles(enemies[i].xCoord >> 4, enemies[i].yCoord >> 4, 10);
+
+        spawnParticles(playerX >> 4, playerY >> 4, 8);
+
+        playerHealth -= 34;
+        screenInvertTimer = 10;
+        beep.tone(beep.freq(80), 10);
+        if (playerHealth <= 0) {
+          lives--;
+          spawnParticles(playerX >> 4, playerY >> 4, 20);
+          beep.tone(beep.freq(50), 25);
+          if (lives == 0) {
+            gameState = GAMEOVER;
           } else {
-            invulnTimer = 80;
+            playerHealth = 100;
+            playerX = 4 << 4;
+            playerY = 32 << 4;
+            invulnTimer = 90;
+          }
+        } else {
+          invulnTimer = 80;
+        }
+      }
+
+      if (enemies[i].active) {
+        const uint8_t* sprite = Images::beeSprite;
+        if (enemies[i].type == 1)
+          sprite = Images::butterflySprite;
+        else if (enemies[i].type == 2)
+          sprite = Images::bossSprite;
+
+        int16_t eX = enemies[i].xCoord >> 4;
+        int16_t eY = enemies[i].yCoord >> 4;
+        if (eX >= -8 && eX < 128 && eY >= -8 && eY < 64) {
+          Sprites::drawSelfMasked(eX, eY, sprite, 0);
+          if ((eX >> 0) <= ((playerX >> 4) + 8) &&
+              (eX >> 0) >= ((playerX >> 4) - 8) &&
+              (eY >> 0) <= ((playerY >> 4) + 8) &&
+              (eY >> 0) >= ((playerY >> 4) - 8)) {
+            // Serial.print(F("DRAW_NEAR_PLAYER "));
+            // Serial.print(i);
+
+            // Serial.print(F(" ACTIVE="));
+            // Serial.print(enemies[i].active);
+
+            // Serial.print(F(" ARR="));
+            // Serial.print(enemies[i].arriving);
+
+            // Serial.print(F(" DIV="));
+            // Serial.print(enemies[i].diving);
+
+            // Serial.print(F(" RET="));
+            // Serial.println(enemies[i].returning);
           }
         }
       }
     }
-  }
 
-  for (uint8_t i = 0; i < MAX_PARTICLES; i++) {
-    if (particles[i].life > 0) {
-      particles[i].xCoord += particles[i].vx;
-      particles[i].yCoord += particles[i].vy;
-      particles[i].life--;
-      arduboy.drawPixel(particles[i].xCoord >> 4, particles[i].yCoord >> 4,
-                        WHITE);
+    if (activeEnemies == 0 && !mothership.active) {
+      wave++;
+      initWave();
     }
-  }
 
-  if (invulnTimer == 0 || (invulnTimer % 12 < 6)) {
-    int16_t pX = playerX >> 4;
-    int16_t pY = playerY >> 4;
-    if (pX >= -8 && pX < 128 && pY >= -8 && pY < 64) {
-      if (dualShooterTimer > 0) {
-        Sprites::drawSelfMasked(pX, pY - 3, Images::playerSprite, 0);
-        Sprites::drawSelfMasked(pX, pY + 3, Images::playerSprite, 0);
-      } else {
-        Sprites::drawSelfMasked(pX, pY, Images::playerSprite, 0);
+    for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) {
+      if (eBullets[i].active) {
+        eBullets[i].xCoord += eBullets[i].vx;
+        if (eBullets[i].xCoord < 0) {
+          eBullets[i].active = false;
+        } else {
+          arduboy.drawFastHLine(eBullets[i].xCoord >> 4,
+                                eBullets[i].yCoord >> 4, 3, WHITE);
+          if (invulnTimer == 0 && eBullets[i].xCoord >= playerX &&
+              eBullets[i].xCoord <= playerX + (7 << 4) &&
+              eBullets[i].yCoord >= playerY &&
+              eBullets[i].yCoord <= playerY + (7 << 4)) {
+            eBullets[i].active = false;
+            spawnParticles(playerX >> 4, playerY >> 4, 8);
+            playerHealth -= 34;
+            screenInvertTimer = 10;
+            beep.tone(beep.freq(80), 10);
+            if (playerHealth <= 0) {
+              lives--;
+              spawnParticles(playerX >> 4, playerY >> 4, 20);
+              beep.tone(beep.freq(50), 25);
+              if (lives == 0) {
+                gameState = GAMEOVER;
+              } else {
+                playerHealth = 100;
+                playerX = 4 << 4;
+                playerY = 32 << 4;
+                invulnTimer = 90;
+              }
+            } else {
+              invulnTimer = 80;
+            }
+          }
+        }
       }
     }
-  }
 
-  drawVerticalScore(score);
-  drawLivesAndHealth();
-}
-
-void loop() {
-  if (!arduboy.nextFrame()) return;
-  arduboy.pollButtons();
-  beep.timer();
-
-  if (gameState == SplahScreen) {
-    splashScreen();
-  } else if (gameState == TITLE) {
-    updateStars();
-    arduboy.invert(false);
-    Sprites::drawOverwrite(103, 0, Images::Galaga_Title, 0);
-    Sprites::drawOverwrite(24, 8, Images::LargePlayer, arduboy.frameCount % 2);
-
-    // arduboy.setCursor(44, 25);
-    // arduboy.print(F("GALAGA"));
-    // arduboy.setCursor(34, 45);
-    // arduboy.print(F("PRESS A/B"));
-    if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
-      resetGame();
-      gameState = PLAYING;
+    for (uint8_t i = 0; i < MAX_PARTICLES; i++) {
+      if (particles[i].life > 0) {
+        particles[i].xCoord += particles[i].vx;
+        particles[i].yCoord += particles[i].vy;
+        particles[i].life--;
+        arduboy.drawPixel(particles[i].xCoord >> 4, particles[i].yCoord >> 4,
+                          WHITE);
+      }
     }
-  } else if (gameState == PLAYING) {
-    updateStars();
-    updatePlaying();
-  } else if (gameState == GAMEOVER) {
-    updateStars();
-    arduboy.invert(false);
-    arduboy.setCursor(44, 25);
-    arduboy.print(F("OVER"));
-    arduboy.setCursor(40, 45);
+
+    if (invulnTimer == 0 || (invulnTimer % 12 < 6)) {
+      int16_t pX = playerX >> 4;
+      int16_t pY = playerY >> 4;
+      if (pX >= -8 && pX < 128 && pY >= -8 && pY < 64) {
+        if (dualShooterTimer > 0) {
+          Sprites::drawSelfMasked(pX, pY - 3, Images::playerSprite, 0);
+          Sprites::drawSelfMasked(pX, pY + 3, Images::playerSprite, 0);
+        } else {
+          Sprites::drawSelfMasked(pX, pY, Images::playerSprite, 0);
+        }
+      }
+    }
+
     drawVerticalScore(score);
-    if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
-      resetGame();
-      gameState = PLAYING;
-    }
+    drawLivesAndHealth();
   }
 
-  arduboy.display(true);
-}
+  void loop() {
+    if (!arduboy.nextFrame()) return;
+    arduboy.pollButtons();
+    beep.timer();
+
+    if (gameState == SplahScreen) {
+      splashScreen();
+    } else if (gameState == TITLE) {
+      updateStars();
+      arduboy.invert(false);
+      Sprites::drawOverwrite(103, 0, Images::Galaga_Title, 0);
+      Sprites::drawOverwrite(24, 8, Images::LargePlayer,
+                             arduboy.frameCount % 2);
+
+      // arduboy.setCursor(44, 25);
+      // arduboy.print(F("GALAGA"));
+      // arduboy.setCursor(34, 45);
+      // arduboy.print(F("PRESS A/B"));
+      if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
+        resetGame();
+        gameState = PLAYING;
+      }
+    } else if (gameState == PLAYING) {
+      updateStars();
+      updatePlaying();
+    } else if (gameState == GAMEOVER) {
+      updateStars();
+      arduboy.invert(false);
+      arduboy.setCursor(44, 25);
+      arduboy.print(F("OVER"));
+      arduboy.setCursor(40, 45);
+      drawVerticalScore(score);
+      if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
+        resetGame();
+        gameState = PLAYING;
+      }
+    }
+
+    arduboy.display(true);
+  }

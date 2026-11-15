@@ -131,11 +131,11 @@ void initWave() {
   healthPack.active = false;
   healthPackSpawnTimer = 0;
   arrivalReleaseTimer = 0;
-    replenishTimer = 0;
-formationOffsetX = 0;
-formationOffsetY = 0;
-formationOffsetY_drop = 0;
-formationFrame = 0;
+  replenishTimer = 0;
+  formationOffsetX = 0;
+  formationOffsetY = 0;
+  formationOffsetY_drop = 0;
+  formationFrame = 0;
 
   // Gentle wave shift keeping formation well above the bottom 24 pixels (max Y
   // <= 40)
@@ -266,6 +266,11 @@ void firePlayerBullet() {
 }
 
 void fireEnemyBullet(int16_t x, int16_t y) {
+  Serial.print(F("FIRE "));
+  Serial.print(x >> 4);
+  Serial.print(F(","));
+  Serial.println(y >> 4);
+
   for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) {
     if (!eBullets[i].active) {
       eBullets[i].xCoord = x - (2 << 4);
@@ -383,7 +388,7 @@ void updateStars() {
 }
 
 void updatePlaying() {
-	formationFrame++;
+  formationFrame++;
   if (invulnTimer > 0) invulnTimer--;
   if (screenInvertTimer > 0) screenInvertTimer--;
   if (dualShooterTimer > 0) dualShooterTimer--;
@@ -581,9 +586,8 @@ void updatePlaying() {
 
   formationOffsetX = 0;
 
-  formationOffsetY =
-      (1 << 4) + (int16_t)(sin((float)formationFrame * 0.025f) *
-                           dynamicAmplitude * 16.0f);
+  formationOffsetY = (1 << 4) + (int16_t)(sin((float)formationFrame * 0.025f) *
+                                          dynamicAmplitude * 16.0f);
   formationOffsetY_drop = 0;
 
   if (!mothership.active && formationComplete) {
@@ -741,76 +745,113 @@ void updatePlaying() {
     } else {
       if (!enemies[i].returning) {
         enemies[i].divePhase += 1;
-int16_t diveSpeed =
-    10 + (wave * 1) + (survivalTimer / 300);
+        int16_t diveSpeed = 10 + (wave * 1) + (survivalTimer / 300);
 
-int16_t dx =
-    playerX - enemies[i].xCoord;
+        int16_t dx = playerX - enemies[i].xCoord;
 
-int16_t dy =
-    playerY - enemies[i].yCoord;
+        int16_t dy = playerY - enemies[i].yCoord;
 
-int32_t len =
-    max((int32_t)1,
-        (int32_t)sqrt(
-            (float)dx * dx +
-            (float)dy * dy));
+        int32_t len =
+            max((int32_t)1, (int32_t)sqrt((float)dx * dx + (float)dy * dy));
 
-enemies[i].xCoord +=
-    (dx * diveSpeed) / len;
+        enemies[i].xCoord += (dx * diveSpeed) / len;
 
-enemies[i].yCoord +=
-    (dy * diveSpeed) / len;
+        enemies[i].yCoord += (dy * diveSpeed) / len;
 
-/*
- * Once an enemy reaches the player's area,
- * immediately start the return phase.
- */
+        if (enemies[i].xCoord > (160 << 4)) {
+          enemies[i].diving = false;
+          enemies[i].returning = true;
+        }
 
-if (abs(dx) < (10 << 4) &&
-    abs(dy) < (10 << 4)) {
+        if (enemies[i].xCoord < (-32 << 4)) {
+          enemies[i].diving = false;
+          enemies[i].returning = true;
+        }
 
-    enemies[i].diving = false;
-    enemies[i].returning = true;
+        /*
+         * Once an enemy reaches the player's area,
+         * immediately start the return phase.
+         */
 
-    // Serial.print(F("BREAKOFF "));
-    // Serial.println(i);
+        if (abs(dx) < (10 << 4) && abs(dy) < (10 << 4)) {
+          enemies[i].diving = false;
+          enemies[i].returning = true;
 
-    continue;
-}
-        if (enemies[i].divePattern == 0) {
-          enemies[i].yCoord +=
-              (int16_t)(sin((float)enemies[i].divePhase * 0.06) * 16.0 *
-                        enemies[i].diveDirection);
-        } else if (enemies[i].divePattern == 1) {
-          enemies[i].yCoord +=
-              (int16_t)(cos((float)enemies[i].divePhase * 0.08) * 20.0);
-        } else {
-          int16_t targetDir = (playerY > enemies[i].yCoord) ? 1 : -1;
-          enemies[i].yCoord += targetDir * 10;
+          // Serial.print(F("BREAKOFF "));
+          // Serial.println(i);
+
+          continue;
+        }
+        // if (enemies[i].divePattern == 0) {
+        //   enemies[i].yCoord +=
+        //       (int16_t)(sin((float)enemies[i].divePhase * 0.06) * 16.0 *
+        //                 enemies[i].diveDirection);
+        // } else if (enemies[i].divePattern == 1) {
+        //   enemies[i].yCoord +=
+        //       (int16_t)(cos((float)enemies[i].divePhase * 0.08) * 20.0);
+        // } else {
+        //   int16_t targetDir = (playerY > enemies[i].yCoord) ? 1 : -1;
+        //   enemies[i].yCoord += targetDir * 10;
+        // }
+
+                if (enemies[i].divePattern == 0) {
+          enemies[i].xCoord +=
+              (int16_t)(
+                  sin((float)enemies[i].divePhase * 0.06) *
+                  6.0 *
+                  enemies[i].diveDirection);
+        }
+        else if (enemies[i].divePattern == 1) {
+          enemies[i].xCoord +=
+              (int16_t)(
+                  cos((float)enemies[i].divePhase * 0.08) *
+                  8.0);
         }
 
         if (enemies[i].yCoord < (2 << 4)) enemies[i].yCoord = 2 << 4;
         if (enemies[i].yCoord > (54 << 4)) enemies[i].yCoord = 54 << 4;
 
         uint8_t firingThreshold = wave + (survivalTimer / 600);
-        if (random(0, 150) < firingThreshold) {
-          fireEnemyBullet(enemies[i].xCoord, enemies[i].yCoord);
+        // if (random(0, 150) < firingThreshold) {
+
+        //     Serial.print(F("SHOOTER "));
+        //     Serial.print(i);
+
+        //     Serial.print(F(" X="));
+        //     Serial.print(enemies[i].xCoord >> 4);
+
+        //     Serial.print(F(" Y="));
+        //     Serial.print(enemies[i].yCoord >> 4);
+
+        //     Serial.print(F(" D="));
+        //     Serial.print(enemies[i].diving);
+
+        //     Serial.print(F(" R="));
+        //     Serial.println(enemies[i].returning);
+
+        //     fireEnemyBullet(
+        //         enemies[i].xCoord,
+        //         enemies[i].yCoord);
+        // }
+
+        int16_t dxPlayer = abs((playerX >> 4) - (enemies[i].xCoord >> 4));
+
+        if (dxPlayer < 40) {
+          if (random(0, 150) < firingThreshold) {
+            fireEnemyBullet(enemies[i].xCoord, enemies[i].yCoord);
+          }
         }
 
-if (enemies[i].xCoord < (-16 << 4)) {
+        if (enemies[i].xCoord < (-16 << 4)) {
+          enemies[i].xCoord = 120 << 4;
+          enemies[i].yCoord = enemies[i].homeY + formationOffsetY;
 
-    enemies[i].xCoord = 120 << 4;
-    enemies[i].yCoord =
-        enemies[i].homeY +
-        formationOffsetY;
+          enemies[i].diving = false;
+          enemies[i].returning = true;
 
-    enemies[i].diving = false;
-    enemies[i].returning = true;
-
-    // Serial.print(F("EXITRETURN "));
-    // Serial.println(i);
-}
+          // Serial.print(F("EXITRETURN "));
+          // Serial.println(i);
+        }
       } else {
         int16_t targetX = enemies[i].homeX + formationOffsetX;
 
@@ -843,25 +884,25 @@ if (enemies[i].xCoord < (-16 << 4)) {
         enemies[i].hp--;
         if (enemies[i].hp == 0) {
           enemies[i].active = false;
-enemies[i].active = false;
+          enemies[i].active = false;
 
-// Serial.print(F("DESTROY "));
-// Serial.print(i);
+          // Serial.print(F("DESTROY "));
+          // Serial.print(i);
 
-// Serial.print(F(" A="));
-// Serial.print(enemies[i].active);
+          // Serial.print(F(" A="));
+          // Serial.print(enemies[i].active);
 
-// Serial.print(F(" D="));
-// Serial.print(enemies[i].diving);
+          // Serial.print(F(" D="));
+          // Serial.print(enemies[i].diving);
 
-// Serial.print(F(" R="));
-// Serial.print(enemies[i].returning);
+          // Serial.print(F(" R="));
+          // Serial.print(enemies[i].returning);
 
-// Serial.print(F(" X="));
-// Serial.print(enemies[i].xCoord >> 4);
+          // Serial.print(F(" X="));
+          // Serial.print(enemies[i].xCoord >> 4);
 
-// Serial.print(F(" Y="));
-// Serial.println(enemies[i].yCoord >> 4);		  
+          // Serial.print(F(" Y="));
+          // Serial.println(enemies[i].yCoord >> 4);
           spawnParticles(enemies[i].xCoord >> 4, enemies[i].yCoord >> 4, 4);
           score += (enemies[i].type + 1) * 25 * (enemies[i].diving ? 2 : 1);
           beep.tone(beep.freq(160), 4);
@@ -873,78 +914,57 @@ enemies[i].active = false;
     }
 
     if (mothership.active) {
+      bool msCollision = mothership.xCoord + (7 << 4) > playerX &&
+                         mothership.xCoord < playerX + (7 << 4) &&
+                         mothership.yCoord + (7 << 4) > playerY &&
+                         mothership.yCoord < playerY + (7 << 4);
 
-    bool msCollision =
-        mothership.xCoord + (7 << 4) > playerX &&
-        mothership.xCoord < playerX + (7 << 4) &&
-        mothership.yCoord + (7 << 4) > playerY &&
-        mothership.yCoord < playerY + (7 << 4);
-
-    if (msCollision) {
-
+      if (msCollision) {
         Serial.print(F("MS_COLLISION "));
         Serial.print(mothership.xCoord >> 4);
         Serial.print(F(","));
         Serial.println(mothership.yCoord >> 4);
-    }
+      }
 
-if (msCollision &&
-    invulnTimer == 0) {
+      if (msCollision && invulnTimer == 0) {
+        mothership.active = false;
 
-    mothership.active = false;
+        spawnParticles(mothership.xCoord >> 4, mothership.yCoord >> 4, 12);
 
-    spawnParticles(
-        mothership.xCoord >> 4,
-        mothership.yCoord >> 4,
-        12);
+        spawnParticles(playerX >> 4, playerY >> 4, 12);
 
-    spawnParticles(
-        playerX >> 4,
-        playerY >> 4,
-        12);
+        playerHealth -= 50;
 
-    playerHealth -= 50;
+        screenInvertTimer = 10;
 
-    screenInvertTimer = 10;
+        beep.tone(beep.freq(80), 15);
 
-    beep.tone(
-        beep.freq(80),
-        15);
-
-    invulnTimer = 80;
-}
+        invulnTimer = 80;
+      }
 
       for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
-int16_t hitboxSize =
-    mothership.diving ? 14 : 7;
+        int16_t hitboxSize = mothership.diving ? 14 : 7;
 
-if (pBullets[b].active &&
-    pBullets[b].xCoord >=
-        mothership.xCoord + formationOffsetX - (3 << 4) &&
-    pBullets[b].xCoord <=
-        mothership.xCoord + formationOffsetX +
-        (hitboxSize << 4) &&
-    pBullets[b].yCoord >=
-        mothership.yCoord - (3 << 4) &&
-    pBullets[b].yCoord <=
-        mothership.yCoord +
-        (hitboxSize << 4)) {
+        if (pBullets[b].active &&
+            pBullets[b].xCoord >=
+                mothership.xCoord + formationOffsetX - (3 << 4) &&
+            pBullets[b].xCoord <=
+                mothership.xCoord + formationOffsetX + (hitboxSize << 4) &&
+            pBullets[b].yCoord >= mothership.yCoord - (3 << 4) &&
+            pBullets[b].yCoord <= mothership.yCoord + (hitboxSize << 4)) {
+          if (mothership.diving && pBullets[b].active) {
+            Serial.print(F("MS "));
+            Serial.print((mothership.xCoord + formationOffsetX) >> 4);
 
-            if (mothership.diving &&
-    pBullets[b].active) {
+            Serial.print(F(","));
+            Serial.print(mothership.yCoord >> 4);
 
-    Serial.print(F("MS "));
-    Serial.print((mothership.xCoord + formationOffsetX) >> 4);
+            Serial.print(F(" BULLET "));
+            Serial.print(pBullets[b].xCoord >> 4);
 
-    Serial.print(F(","));
-    Serial.print(mothership.yCoord >> 4);
-
-    Serial.print(F(" BULLET "));
-    Serial.print(pBullets[b].xCoord >> 4);
-
-    Serial.print(F(","));
-    Serial.println(pBullets[b].yCoord >> 4);
-}
+            Serial.print(F(","));
+            Serial.println(pBullets[b].yCoord >> 4);
+          }
 
           pBullets[b].active = false;
           mothership.hp--;
@@ -989,43 +1009,41 @@ if (pBullets[b].active &&
         enemies[i].xCoord < playerX + (7 << 4) &&
         enemies[i].yCoord + (enemySz << 4) > playerY &&
         enemies[i].yCoord < playerY + (7 << 4)) {
+      enemies[i].active = false;
+      // 		Serial.print(F("COLLISION "));
+      // Serial.print(i);
 
-		enemies[i].active = false;
-// 		Serial.print(F("COLLISION "));
-// Serial.print(i);
+      // Serial.print(F(" X="));
+      // Serial.print(enemies[i].xCoord >> 4);
 
-// Serial.print(F(" X="));
-// Serial.print(enemies[i].xCoord >> 4);
+      // Serial.print(F(" Y="));
+      // Serial.print(enemies[i].yCoord >> 4);
 
-// Serial.print(F(" Y="));
-// Serial.print(enemies[i].yCoord >> 4);
+      // Serial.print(F(" H="));
+      // Serial.print(playerHealth);
 
-// Serial.print(F(" H="));
-// Serial.print(playerHealth);
+      // Serial.print(F(" T="));
+      // Serial.print(enemies[i].type);
 
-// Serial.print(F(" T="));
-// Serial.print(enemies[i].type);
+      // Serial.print(F(" A="));
+      // Serial.print(enemies[i].active);
 
-// Serial.print(F(" A="));
-// Serial.print(enemies[i].active);
+      // Serial.print(F(" D="));
+      // Serial.print(enemies[i].diving);
 
-// Serial.print(F(" D="));
-// Serial.print(enemies[i].diving);
+      // Serial.print(F(" R="));
+      // Serial.print(enemies[i].returning);
 
-// Serial.print(F(" R="));
-// Serial.print(enemies[i].returning);
+      // Serial.print(F(" Q="));
+      // Serial.println(enemies[i].queued);
 
-// Serial.print(F(" Q="));
-// Serial.println(enemies[i].queued);
+      enemies[i].xCoord = -1000;
+      enemies[i].yCoord = -1000;
 
-
-		enemies[i].xCoord = -1000;
-		enemies[i].yCoord = -1000;
-
-		enemies[i].arriving = false;
-		enemies[i].diving = false;
-		enemies[i].returning = false;
-		enemies[i].queued = false;
+      enemies[i].arriving = false;
+      enemies[i].diving = false;
+      enemies[i].returning = false;
+      enemies[i].queued = false;
 
       spawnParticles(enemies[i].xCoord >> 4, enemies[i].yCoord >> 4, 10);
 
@@ -1062,26 +1080,25 @@ if (pBullets[b].active &&
       int16_t eY = enemies[i].yCoord >> 4;
       if (eX >= -8 && eX < 128 && eY >= -8 && eY < 64) {
         Sprites::drawSelfMasked(eX, eY, sprite, 0);
-if ((eX >> 0) <= ((playerX >> 4) + 8) &&
-(eX >> 0) >= ((playerX >> 4) - 8) &&
-(eY >> 0) <= ((playerY >> 4) + 8) &&
-(eY >> 0) >= ((playerY >> 4) - 8)) {
+        if ((eX >> 0) <= ((playerX >> 4) + 8) &&
+            (eX >> 0) >= ((playerX >> 4) - 8) &&
+            (eY >> 0) <= ((playerY >> 4) + 8) &&
+            (eY >> 0) >= ((playerY >> 4) - 8)) {
+          // Serial.print(F("DRAW_NEAR_PLAYER "));
+          // Serial.print(i);
 
-// Serial.print(F("DRAW_NEAR_PLAYER "));
-// Serial.print(i);
+          // Serial.print(F(" ACTIVE="));
+          // Serial.print(enemies[i].active);
 
-// Serial.print(F(" ACTIVE="));
-// Serial.print(enemies[i].active);
+          // Serial.print(F(" ARR="));
+          // Serial.print(enemies[i].arriving);
 
-// Serial.print(F(" ARR="));
-// Serial.print(enemies[i].arriving);
+          // Serial.print(F(" DIV="));
+          // Serial.print(enemies[i].diving);
 
-// Serial.print(F(" DIV="));
-// Serial.print(enemies[i].diving);
-
-// Serial.print(F(" RET="));
-// Serial.println(enemies[i].returning);
-}
+          // Serial.print(F(" RET="));
+          // Serial.println(enemies[i].returning);
+        }
       }
     }
   }

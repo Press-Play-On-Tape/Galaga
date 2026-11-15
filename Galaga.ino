@@ -1,23 +1,11 @@
-#include <Arduboy2.h>
+#include "src/utils/Arduboy2Ext.h"
 #include <Sprites.h>
+#include "src/Images.h"
 
-Arduboy2 arduboy;
+Arduboy2Ext arduboy;
 BeepPin1 beep;
 
 // --- Custom 5x8 Font for Numbers (Width: 5, Height: 8, 10 frames for digits 0-9) ---
-const uint8_t PROGMEM Numbers[] = {
-  5, 8,
-  0x07, 0x05, 0x05, 0x05, 0x07, 
-  0x07, 0x02, 0x02, 0x03, 0x02, 
-  0x07, 0x01, 0x07, 0x04, 0x07, 
-  0x07, 0x04, 0x06, 0x04, 0x07, 
-  0x04, 0x04, 0x07, 0x05, 0x05, 
-  0x07, 0x04, 0x07, 0x01, 0x07, 
-  0x07, 0x05, 0x07, 0x01, 0x07, 
-  0x04, 0x04, 0x04, 0x04, 0x07, 
-  0x07, 0x05, 0x07, 0x05, 0x07, 
-  0x07, 0x04, 0x07, 0x05, 0x07, 
-};
 
 // --- Constants ---
 #define MAX_PLAYER_BULLETS 4
@@ -28,36 +16,6 @@ const uint8_t PROGMEM Numbers[] = {
 #define MAX_PARTICLES 12
 #define MAX_STARS 16
 
-// --- Sprites ---
-const uint8_t PROGMEM playerSprite[] = {
-  7, 7,
-  0x10, 0x38, 0x7C, 0xFE, 0x7C, 0x38, 0x10
-};
-
-const uint8_t PROGMEM beeSprite[] = {
-  6, 6,
-  0x14, 0x3F, 0x1C, 0x1C, 0x3F, 0x14
-};
-
-const uint8_t PROGMEM butterflySprite[] = {
-  6, 6,
-  0x22, 0x1C, 0x3F, 0x3F, 0x1C, 0x22
-};
-
-const uint8_t PROGMEM bossSprite[] = {
-  7, 7,
-  0x1C, 0x3E, 0x7F, 0x6B, 0x7F, 0x3E, 0x1C
-};
-
-const uint8_t PROGMEM mothershipSprite[] = {
-  7, 7,
-  0x1C, 0x3E, 0x7F, 0x5D, 0x7F, 0x3E, 0x1C
-};
-
-const uint8_t PROGMEM healthPackSprite[] = {
-  6, 6,
-  0x1C, 0x1C, 0xFF, 0xFF, 0x1C, 0x1C
-};
 
 // --- Data Structures ---
 struct Bullet {
@@ -108,8 +66,8 @@ struct Star {
 };
 
 // --- Game State Variables ---
-enum GameState : uint8_t { TITLE, PLAYING, GAMEOVER };
-GameState gameState = TITLE;
+enum GameState : uint8_t { SplahScreen, TITLE, PLAYING, GAMEOVER };
+GameState gameState = SplahScreen;
 
 int16_t playerX = 12 << 4;
 int16_t playerY = 32 << 4;
@@ -166,23 +124,31 @@ void initWave() {
   healthPackSpawnTimer = 0;
   arrivalReleaseTimer = 0;
   replenishTimer = 0;
+
+  // Gentle wave shift keeping formation well above the bottom 24 pixels (max Y <= 40)
+  int16_t waveYShift = min(6, (wave - 1) * 2);
+
   uint8_t idx = 0;
   for (uint8_t c = 0; c < ENEMY_COLS; c++) {
     for (uint8_t r = 0; r < ENEMY_ROWS; r++) {
       enemies[idx].homeX = (79 + (c * 8)) << 4;
-      enemies[idx].homeY = (9 + (r * 8)) << 4;
+      // Row spacing set to 5 pixels with compact base start, keeping max row well above bottom
+      enemies[idx].homeY = ((6 + (r * 5)) + waveYShift) << 4; 
+      if (enemies[idx].homeY < (2 << 4)) enemies[idx].homeY = 2 << 4;
+
       enemies[idx].active = true;
       enemies[idx].diving = false;
       enemies[idx].returning = false;
       enemies[idx].queued = true;
       enemies[idx].arriving = false;
 
+      // Enter from sides at least 24 pixels above the bottom (Y between 4 and 38)
       if (idx % 2 == 0) {
         enemies[idx].xCoord = -32 << 4;
-        enemies[idx].yCoord = -32 << 4;
+        enemies[idx].yCoord = random(4, 39) << 4;
       } else {
         enemies[idx].xCoord = 144 << 4;
-        enemies[idx].yCoord = -32 << 4;
+        enemies[idx].yCoord = random(4, 39) << 4;
       }
       
       if (c >= 2) {
@@ -314,29 +280,34 @@ void drawVerticalScore(uint16_t currentScore) {
 
   int16_t startY = 63 - 8;
   for (uint8_t i = 0; i < 5; i++) {
-    Sprites::drawSelfMasked(121, startY, Numbers, digits[i]);
+    Sprites::drawSelfMasked(121, startY, Images::Numbers, digits[i]);
     startY -= 4;
   }
 }
 
 void drawLivesAndHealth() {
   uint8_t displayLives = (lives > 9) ? 9 : lives;
-  Sprites::drawSelfMasked(121, 2, Numbers, displayLives);
+  Sprites::drawSelfMasked(121, 2, Images::Numbers, displayLives);
 
   arduboy.drawRect(120, 11, 6, 22, WHITE);
   uint8_t fillHeight = (playerHealth * 18) / 100;
   if (fillHeight > 18) fillHeight = 18;
-
   if (fillHeight > 0) {
     arduboy.fillRect(122, 13 + 18 - fillHeight, 2, fillHeight, WHITE);
   }
 }
 
 void setup() {
-  arduboy.begin();
+  arduboy.boot();
+  arduboy.display();
+  arduboy.flashlight();
+  arduboy.systemButtons();
+  arduboy.audio.begin();
+  arduboy.waitNoButtons();
   arduboy.setFrameRate(60);
   arduboy.initRandomSeed();
   beep.begin();
+
   Serial.begin(9600);
 
   for (uint8_t i = 0; i < MAX_STARS; i++) {
@@ -425,7 +396,7 @@ void updatePlaying() {
     if (hpY < -10 || hpY > 70) {
       healthPack.active = false;
     } else {
-      Sprites::drawSelfMasked(hpX, hpY, healthPackSprite, 0);
+      Sprites::drawSelfMasked(hpX, hpY, Images::healthPackSprite, 0);
 
       for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
         if (pBullets[b].active &&
@@ -483,10 +454,10 @@ void updatePlaying() {
         enemies[i].arriving = false;
         if (i % 2 == 0) {
           enemies[i].xCoord = -32 << 4;
-          enemies[i].yCoord = -32 << 4;
+          enemies[i].yCoord = random(4, 39) << 4;
         } else {
           enemies[i].xCoord = 144 << 4;
-          enemies[i].yCoord = -32 << 4;
+          enemies[i].yCoord = random(4, 39) << 4;
         }
         break;
       }
@@ -566,7 +537,7 @@ void updatePlaying() {
     int16_t msX = (mothership.xCoord + formationOffsetX) >> 4;
     int16_t msY = mothership.yCoord >> 4;
     if (msX >= -8 && msX < 128 && msY >= -8 && msY < 64) {
-      Sprites::drawSelfMasked(msX, msY, mothershipSprite, 0);
+      Sprites::drawSelfMasked(msX, msY, Images::mothershipSprite, 0);
     }
   }
 
@@ -611,7 +582,7 @@ void updatePlaying() {
       enemies[i].xCoord = enemies[i].homeX + formationOffsetX;
       int16_t targetY = enemies[i].homeY + formationOffsetY;
       if (targetY < (2 << 4)) targetY = 2 << 4;
-      if (targetY > (56 << 4)) targetY = 56 << 4; // <-- Raised clamp from 46 to 56 pixels
+      if (targetY > (40 << 4)) targetY = 40 << 4; // Clamp formation max Y at 40 (at least 24 pixels above bottom)
       enemies[i].yCoord = targetY;
     } 
     else {
@@ -645,7 +616,7 @@ void updatePlaying() {
         enemies[i].xCoord -= 16;
         int16_t targetY = enemies[i].homeY + formationOffsetY;
         if (targetY < (2 << 4)) targetY = 2 << 4;
-        if (targetY > (56 << 4)) targetY = 56 << 4;
+        if (targetY > (40 << 4)) targetY = 40 << 4;
         if (enemies[i].yCoord < targetY) enemies[i].yCoord += 8;
         else if (enemies[i].yCoord > targetY) enemies[i].yCoord -= 8;
 
@@ -713,7 +684,11 @@ void updatePlaying() {
       if (isLeftmostInRow) canCollide = true;
     }
 
-    if (enemies[i].active && !enemies[i].arriving && invulnTimer == 0 && canCollide &&
+    // --- Broad-phase Coarse Check & Fine-phase Collision Check ---
+    bool coarseOverlap = (abs((enemies[i].xCoord >> 4) - (playerX >> 4)) < 8) &&
+                          (abs((enemies[i].yCoord >> 4) - (playerY >> 4)) < 8);
+
+    if (coarseOverlap && enemies[i].active && !enemies[i].arriving && invulnTimer == 0 && canCollide &&
         enemies[i].xCoord + (enemySz << 4) > playerX && enemies[i].xCoord < playerX + (7 << 4) &&
         enemies[i].yCoord + (enemySz << 4) > playerY && enemies[i].yCoord < playerY + (7 << 4)) {
       enemies[i].active = false;
@@ -739,9 +714,9 @@ void updatePlaying() {
     }
 
     if (enemies[i].active) {
-      const uint8_t* sprite = beeSprite;
-      if (enemies[i].type == 1) sprite = butterflySprite;
-      else if (enemies[i].type == 2) sprite = bossSprite;
+      const uint8_t* sprite = Images::beeSprite;
+      if (enemies[i].type == 1) sprite = Images::butterflySprite;
+      else if (enemies[i].type == 2) sprite = Images::bossSprite;
       
       int16_t eX = enemies[i].xCoord >> 4;
       int16_t eY = enemies[i].yCoord >> 4;
@@ -805,10 +780,10 @@ void updatePlaying() {
     int16_t pY = playerY >> 4;
     if (pX >= -8 && pX < 128 && pY >= -8 && pY < 64) {
       if (dualShooterTimer > 0) {
-        Sprites::drawSelfMasked(pX, pY - 3, playerSprite, 0);
-        Sprites::drawSelfMasked(pX, pY + 3, playerSprite, 0);
+        Sprites::drawSelfMasked(pX, pY - 3, Images::playerSprite, 0);
+        Sprites::drawSelfMasked(pX, pY + 3, Images::playerSprite, 0);
       } else {
-        Sprites::drawSelfMasked(pX, pY, playerSprite, 0);
+        Sprites::drawSelfMasked(pX, pY, Images::playerSprite, 0);
       }
     }
   }
@@ -821,12 +796,14 @@ void loop() {
   if (!arduboy.nextFrame()) return;
   arduboy.pollButtons();
   beep.timer();
-  arduboy.clear();
 
-  updateStars();
-
-  if (gameState == TITLE) {
+  if (gameState == SplahScreen) {
+    splashScreen();
+  }
+  else if (gameState == TITLE) {
+    updateStars();
     arduboy.invert(false);
+    Sprites::drawOverwrite(103, 0, Images::Galaga_Title, 0);
     arduboy.setCursor(44, 25);
     arduboy.print(F("GALAGA"));
     arduboy.setCursor(34, 45);
@@ -836,8 +813,10 @@ void loop() {
       gameState = PLAYING;
     }
   } else if (gameState == PLAYING) {
+    updateStars();
     updatePlaying();
   } else if (gameState == GAMEOVER) {
+    updateStars();
     arduboy.invert(false);
     arduboy.setCursor(44, 25);
     arduboy.print(F("OVER"));
@@ -849,5 +828,5 @@ void loop() {
     }
   }
 
-  arduboy.display();
+  arduboy.display(true);
 }

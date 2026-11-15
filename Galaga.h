@@ -873,6 +873,47 @@ enemies[i].active = false;
     }
 
     if (mothership.active) {
+
+    bool msCollision =
+        mothership.xCoord + (7 << 4) > playerX &&
+        mothership.xCoord < playerX + (7 << 4) &&
+        mothership.yCoord + (7 << 4) > playerY &&
+        mothership.yCoord < playerY + (7 << 4);
+
+    if (msCollision) {
+
+        Serial.print(F("MS_COLLISION "));
+        Serial.print(mothership.xCoord >> 4);
+        Serial.print(F(","));
+        Serial.println(mothership.yCoord >> 4);
+    }
+
+if (msCollision &&
+    invulnTimer == 0) {
+
+    mothership.active = false;
+
+    spawnParticles(
+        mothership.xCoord >> 4,
+        mothership.yCoord >> 4,
+        12);
+
+    spawnParticles(
+        playerX >> 4,
+        playerY >> 4,
+        12);
+
+    playerHealth -= 50;
+
+    screenInvertTimer = 10;
+
+    beep.tone(
+        beep.freq(80),
+        15);
+
+    invulnTimer = 80;
+}
+
       for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
 int16_t hitboxSize =
     mothership.diving ? 14 : 7;

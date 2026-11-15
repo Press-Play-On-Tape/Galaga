@@ -470,6 +470,7 @@ void updatePlaying() {
 
   // Health Pack logic
   if (!healthPack.active) {
+  if (score >= 3000) {
     healthPackSpawnTimer++;
     if (healthPackSpawnTimer > 500) {
       healthPackSpawnTimer = 0;
@@ -483,6 +484,7 @@ void updatePlaying() {
         healthPack.vy = random(-11, -3);
       }
     }
+  }
   } else {
     healthPack.yCoord += healthPack.vy;
     int16_t hpX = healthPack.xCoord >> 4;
@@ -684,80 +686,9 @@ void updatePlaying() {
 
     if (enemies[i].queued) continue;
 
-    // if (enemies[i].arriving) {
-    //   int16_t targetXPos = enemies[i].homeX + formationOffsetX;
-    //   int16_t dx = targetXPos - enemies[i].xCoord;
-    //   int16_t dy = enemies[i].homeY - enemies[i].yCoord;
-    //   int32_t distSq = (int32_t)dx * dx + (int32_t)dy * dy;
-
-    //   if (distSq < (48 * 48)) {
-    //     enemies[i].xCoord = targetXPos;
-    //     enemies[i].yCoord = enemies[i].homeY;
-    //     enemies[i].arriving = false;
-    //   } else {
-    //     int16_t speed = 48;
-    //     if (abs(dx) > abs(dy)) {
-    //       enemies[i].xCoord += (dx > 0) ? speed : -speed;
-    //       enemies[i].yCoord += (int32_t)dy * speed / abs(dx);
-    //     } else {
-    //       enemies[i].yCoord += (dy > 0) ? speed : -speed;
-    //       enemies[i].xCoord += (int32_t)dx * speed / abs(dy);
-    //     }
-    //   }
-    // }
+ 
 
     if (enemies[i].arriving) {
-      // enemies[i].entryPhase++;
-
-      // int16_t targetX = enemies[i].homeX + formationOffsetX;
-
-      // int16_t targetY = enemies[i].homeY + formationOffsetY;
-
-      // int16_t dx = targetX - enemies[i].xCoord;
-
-      // int16_t dy = targetY - enemies[i].yCoord;
-
-      // int16_t curve = 0;
-
-      // if (enemies[i].spawnSide == 0) {
-      //   curve = sin(enemies[i].entryPhase * 0.08f) * (20 << 4);
-
-      //   enemies[i].xCoord += 60;
-
-      //   if (dy > 0)
-      //     enemies[i].yCoord += 20;
-      //   else
-      //     enemies[i].yCoord -= 20;
-
-      //   enemies[i].yCoord += curve / 12;
-
-      // } else if (enemies[i].spawnSide == 1) {
-      //   curve = sin(enemies[i].entryPhase * 0.08f) * (20 << 4);
-
-      //   enemies[i].xCoord -= 60;
-
-      //   if (dy > 0)
-      //     enemies[i].yCoord += 20;
-      //   else
-      //     enemies[i].yCoord -= 20;
-
-      //   enemies[i].yCoord += curve / 12;
-
-      // } else {
-      //   curve = sin(enemies[i].entryPhase * 0.08f) * (24 << 4);
-
-      //   enemies[i].yCoord += 60;
-
-      //   if (dx > 0)
-      //     enemies[i].xCoord += 20;
-      //   else
-      //     enemies[i].xCoord -= 20;
-
-      //   enemies[i].xCoord += curve / 12;
-      // }
-
-      // enemies[i].xCoord += dx / 12;
-      // enemies[i].yCoord += dy / 12;
 
       enemies[i].entryPhase++;
 
@@ -774,39 +705,53 @@ void updatePlaying() {
       switch (enemies[i].spawnSide) {
         case 0:  // left spiral
 
-          curveY = (int16_t)(sin(enemies[i].entryPhase * 0.06f) * (28 << 4));
+curveY = (int16_t)(
+    sin(enemies[i].entryPhase * 0.06f) *
+    (12 << 4));
 
-          curveX = (int16_t)(cos(enemies[i].entryPhase * 0.05f) * (10 << 4));
+curveX = (int16_t)(
+    cos(enemies[i].entryPhase * 0.05f) *
+    (5 << 4));
 
           break;
 
         case 1:  // right spiral
 
-          curveY = (int16_t)(sin(enemies[i].entryPhase * 0.06f) * (28 << 4));
+curveY = (int16_t)(
+    sin(enemies[i].entryPhase * 0.06f) *
+    (12 << 4));
 
-          curveX = -(int16_t)(cos(enemies[i].entryPhase * 0.05f) * (10 << 4));
+curveX = -(int16_t)(
+    cos(enemies[i].entryPhase * 0.05f) *
+    (5 << 4));
 
           break;
 
         default:  // top dive
-
-          curveX = (int16_t)(sin(enemies[i].entryPhase * 0.08f) * (22 << 4));
+curveX = (int16_t)(
+    sin(enemies[i].entryPhase * 0.08f) *
+    (10 << 4));
 
           break;
       }
 
-      enemies[i].xCoord += dx / 10 + curveX / 12;
+if (abs(dx) > (24 << 4) ||
+    abs(dy) > (24 << 4))
+{
+    enemies[i].xCoord +=
+        dx / 10 +
+        curveX / 12;
 
-      enemies[i].yCoord += dy / 10 + curveY / 12;
+    enemies[i].yCoord +=
+        dy / 10 +
+        curveY / 12;
+}
+else
+{
+    enemies[i].xCoord += dx / 6;
+    enemies[i].yCoord += dy / 6;
+}
 
-      // if (abs(dx) < (8 << 4) && abs(dy) < (8 << 4)) {
-      //   if (abs(dx) < (12 << 4) &&
-      // abs(dy) < (12 << 4)) {
-      //     enemies[i].arriving = false;
-      //     enemies[i].xCoord = targetX;
-      //     enemies[i].yCoord = targetY;
-      //   }
-      // }
       if (abs(dx) < (8 << 4) && abs(dy) < (8 << 4)) {
         enemies[i].arriving = false;
 

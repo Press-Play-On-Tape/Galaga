@@ -1,10 +1,59 @@
+// {
+//     "[cpp]": {
+//         "editor.defaultFormatter": "ms-vscode.cpptools"
+//     },
+//     "[c]": {
+//         "editor.defaultFormatter": "ms-vscode.cpptools"
+//     },
+//     "C_Cpp.clang_format_style": "file",
+//     "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, BreakBeforeBraces: Stroustrup, IndentWidth: 4, ColumnLimit: 120 }",
+//     "C_Cpp.vcFormat.indent.braces": false,
+//     "C_Cpp.clang_format_fallbackStyle": "none"
+
+// }
+// {
+//     "[cpp]": {
+//         "editor.defaultFormatter": "ms-vscode.cpptools"
+//     },
+//     "[c]": {
+//         "editor.defaultFormatter": "ms-vscode.cpptools"
+//     },
+//     "C_Cpp.formatting": "vcFormat",
+//     "C_Cpp.vcFormat.newLine.beforeOpenBrace.function": "sameLine",
+//     "C_Cpp.vcFormat.indent.braces": false
+// }
+
+
+// {
+//     "[cpp]": {
+//         "editor.defaultFormatter": "ms-vscode.cpptools"
+//     },
+//     "[c]": {
+//         "editor.defaultFormatter": "ms-vscode.cpptools"
+//     },
+//     "C_Cpp.formatting": "vcFormat",
+//     "C_Cpp.vcFormat.newLine.beforeOpenBrace.function": "sameLine",
+//     "C_Cpp.vcFormat.newLine.beforeOpenBrace.block": "sameLine",
+//     "C_Cpp.vcFormat.newLine.beforeElse": true,
+//     "C_Cpp.vcFormat.newLine.beforeCatch": true,
+//     "C_Cpp.vcFormat.indent.braces": false
+// }
+
+
 {
+    "editor.insertSpaces": false,
+    "editor.tabSize": 4,
+    "editor.detectIndentation": false,
     "[cpp]": {
         "editor.defaultFormatter": "ms-vscode.cpptools"
     },
     "[c]": {
         "editor.defaultFormatter": "ms-vscode.cpptools"
     },
-    "C_Cpp.clang_format_style": "file",
-    "C_Cpp.clang_format_fallbackStyle": "{ BasedOnStyle: Google, BreakBeforeBraces: Stroustrup, IndentWidth: 4, ColumnLimit: 120 }"
+    "C_Cpp.formatting": "vcFormat",
+    "C_Cpp.vcFormat.newLine.beforeOpenBrace.function": "sameLine",
+    "C_Cpp.vcFormat.newLine.beforeOpenBrace.block": "sameLine",
+    "C_Cpp.vcFormat.newLine.beforeElse": true,
+    "C_Cpp.vcFormat.newLine.beforeCatch": true,
+    "C_Cpp.vcFormat.indent.braces": false
 }

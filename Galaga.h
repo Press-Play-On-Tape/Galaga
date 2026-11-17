@@ -638,6 +638,12 @@ void updatePlaying() {
 		diveTimer++;
 		uint16_t currentDiveInterval = max(25, 130 - (wave * 8) - (survivalTimer / 40));
 		
+Serial.print("diveTimer ");
+Serial.print(diveTimer);
+Serial.print(", currentDiveInterval ");
+Serial.println(currentDiveInterval);
+
+
 		if (diveTimer >= currentDiveInterval) {
 			diveTimer = 0;
 			triggerRandomDives();
@@ -974,12 +980,14 @@ enemies[i].divePattern = 255;
 
 			for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
 
-				int16_t hitboxSize = mothership.diving ? 14 : 7;
+				Rect bulletRect {
+					(int16_t)(pBullets[b].xCoord >> 4),
+					(int16_t)(pBullets[b].yCoord >> 4),
+					3,
+					1
+				};
 
-				if (pBullets[b].active && pBullets[b].xCoord >= mothership.xCoord + formationOffsetX - (3 << 4) &&
-					pBullets[b].xCoord <= mothership.xCoord + formationOffsetX + (hitboxSize << 4) &&
-					pBullets[b].yCoord >= mothership.yCoord - (3 << 4) &&
-					pBullets[b].yCoord <= mothership.yCoord + (hitboxSize << 4)) {
+				if (pBullets[b].active && arduboy.collide(bulletRect, mothershipRect)) {
 
 					pBullets[b].active = false;
 					mothership.hp--;

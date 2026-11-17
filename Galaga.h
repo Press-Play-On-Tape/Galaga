@@ -25,7 +25,7 @@ BeepPin1 beep;
 
 
 // --- Game State Variables ---
-enum class GameState : uint8_t { SplahScreen, Title, PLAYING, GAMEOVER };
+enum class GameState : uint8_t { SplahScreen, Title_Init, Title, PLAYING, GAMEOVER };
 GameState gameState = GameState::SplahScreen;
 
 Bullet pBullets[MAX_PLAYER_BULLETS];
@@ -159,12 +159,8 @@ Serial.println(formationFrame);
 }
 
 void resetGame() {
-	player.xCoord = 4 << 4;
-	player.yCoord = 32 << 4;
-	player.vX = 0;
-	player.vY = 0;
-	player.lives = 3;
-	player.health = 100;
+
+	player.reset();
 	score = 0;
 	wave = 1;
 	formationOffsetX = 0;
@@ -175,9 +171,11 @@ void resetGame() {
 	for (uint8_t i = 0; i < MAX_PLAYER_BULLETS; i++) pBullets[i].active = false;
 	for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) eBullets[i].active = false;
 	initWave();
+
 }
 
-void firePlayerBullet() {
+void firePlayerBullet(uint8_t offset = 4) {
+
 	if (dualShooterTimer > 0) {
 		for (uint8_t i = 0; i < MAX_PLAYER_BULLETS && i + 1 < MAX_PLAYER_BULLETS; i += 2) {
 			if (!pBullets[i].active && !pBullets[i + 1].active) {
@@ -199,7 +197,7 @@ void firePlayerBullet() {
 	else {
 		for (uint8_t i = 0; i < MAX_PLAYER_BULLETS; i++) {
 			if (!pBullets[i].active) {
-				pBullets[i].xCoord = player.xCoord + (4 << 4);
+				pBullets[i].xCoord = player.xCoord + (offset << 4);
 				pBullets[i].yCoord = player.yCoord + (3 << 4);
 				pBullets[i].vx = 64;
 				pBullets[i].active = true;
@@ -432,7 +430,7 @@ void updatePlaying() {
 		player.vX = 0;
 	}
 
-	if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
+	if (arduboy.pressed(A_BUTTON) || arduboy.pressed(B_BUTTON)) {
 		firePlayerBullet();
 	}
 
@@ -1110,6 +1108,10 @@ void loop() {
 		case GameState::SplahScreen:
 			splashScreen();
 			break;
+		
+		case GameState::Title_Init:
+			titleScreen_Init();			
+			[[fallthrough]]
 		
 		case GameState::Title:
 			updateStars();

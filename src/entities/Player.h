@@ -9,4 +9,16 @@ struct Player {
 
 	uint8_t lives = 3;
 	int16_t health = 100;
+
+	void reset() {
+
+		this->xCoord = 4 << 4;
+		this->yCoord = 32 << 4;
+		this->vX = 0;
+		this->vY = 0;
+		this->lives = 3;
+		this->health = 100;
+	
+	}
+
 };

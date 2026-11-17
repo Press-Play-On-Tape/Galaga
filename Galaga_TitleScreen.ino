@@ -2,59 +2,338 @@
 
 #include "src/Images.h"
 #include "src/utils/Arduboy2Ext.h"
+#define DEBUG_BREAK    asm volatile("break\n");
 
-int8_t boss_X = 20;
-int8_t bees_X[] = { 1, 21, 41 };
-int8_t butterfly_X[] = { 11, 31 };
+uint8_t Title_Coords[] = {
+	60, 58, 56, 54, 52, 50, 48, 46, 44, 42,
+	40, 38, 36, 34, 32, 30, 28, 26, 24, 22,
+	20, 18, 16, 14, 12, 10,  9,  8,  7,  6,
+	6,  5,  5,  4,  4,  4,  3,  3,  3,  3,
+	2,  2,  2,  2,  2,  1,  1,  1,  1,  1,
+	1,  1,
+};
 
-int8_t coords[] = { 50, 49, 48, 47, 46, 45, 44, 43, 42, 41, 40, 39, 38, 37, 36, 35, 34, 33, 32, 31, 30, 
-29, 28, 27, 26, 25,24 ,23 , 22, 21, 20, 19, 18, 17, 16, 15, 14, 13, 12, 12, 11, 11, 11, 10, 10, 10, 10, 10, 11, 11, 12, 11, 11, 10, 10,  };
 uint8_t phase = 0;
 uint8_t counter = 0;
 
+uint16_t titleDecisionTimer = 0;
+int16_t titleDesiredY = 32 << 4;
+
+void titleScreen_Init() {
+
+	// Mothership
+
+	enemies[0].yCoord = 24 << 4;
+	enemies[0].xCoord = 110 << 4;
+
+
+	// Butterflies ..
+
+	enemies[1].yCoord = 16 << 4;
+	enemies[1].xCoord = 96 << 4;
+
+	enemies[2].yCoord = 34 << 4;
+	enemies[2].xCoord = 96 << 4;
+
+
+	// Bees ..
+
+	enemies[3].yCoord = 7 << 4;
+	enemies[3].xCoord = 81 << 4;
+
+	enemies[4].yCoord = 25 << 4;
+	enemies[4].xCoord = 81 << 4;
+
+	enemies[5].yCoord = 43 << 4;
+	enemies[5].xCoord = 81 << 4;
+
+
+	// Player ..
+
+	player.yCoord = 24 << 4;
+	player.xCoord = -18 << 4;
+
+	for (uint8_t i = 0; i < 6; i++) {
+		enemies[i].active = true;
+		enemies[i].hp = 0;
+	}
+
+	for (uint8_t i = 0; i < MAX_PLAYER_BULLETS; i++)
+		pBullets[i].active = false;
+
+
+	gameState = GameState::Title;
+	arduboy.invert(false);
+
+}
 
 void titleScreen() {
 
-	arduboy.invert(false);
-
 	switch (phase) {
-	
+
 		case 0:
-Serial.println(counter);
-		Sprites::drawOverwrite(110 + coords[counter], boss_X, Images::Large_Boss, arduboy.frameCount % 96 < 48);
-		for (uint8_t i = 0; i < 2; i++) {
-			Sprites::drawOverwrite(94 + coords[counter], butterfly_X[i], Images::Large_Butterfly, arduboy.frameCount % 96 < 48);
-		}
 
-		for (uint8_t i = 0; i < 3; i++) {
-			Sprites::drawOverwrite(78 + coords[counter], bees_X[i], Images::Large_Bee, arduboy.frameCount % 96 < 48);
-		}
+			Sprites::drawOverwrite((enemies[0].xCoord + (Title_Coords[counter] << 4)) >> 4, enemies[0].yCoord >> 4, Images::Large_Boss, arduboy.getFrameCountHalf(96));
 
-		counter++;
-		if (counter == 30) {
-		phase = 1;
-		}
-		break;
+			for (uint8_t i = 0; i < 2; i++) {
+				Sprites::drawOverwrite((enemies[i + 1].xCoord + (Title_Coords[counter] << 4)) >> 4, enemies[i + 1].yCoord >> 4, Images::Large_Butterfly, arduboy.getFrameCountHalf(96));
+			}
+
+			for (uint8_t i = 0; i < 3; i++) {
+				Sprites::drawOverwrite((enemies[i + 3].xCoord + (Title_Coords[counter] << 4)) >> 4, enemies[i + 3].yCoord >> 4, Images::Large_Bee, arduboy.getFrameCountHalf(96));
+			}
+
+			Sprites::drawOverwrite(player.xCoord >> 4, player.yCoord >> 4, Images::LargePlayer, arduboy.isFrameCount(2));
+
+			counter++;
+
+			if (arduboy.isFrameCount(2) == 0 && player.xCoord < 0) {
+				Serial.print(player.xCoord);
+				player.xCoord += (1 << 4);
+			}
+
+			if (counter == 51) {
+				phase = 1;
+				counter = 0;
+				arduboy.frameCount = 0;
+			}
+
+			break;
 
 		case 1:
-	Sprites::drawOverwrite(110, boss_X, Images::Large_Boss, arduboy.frameCount % 96 < 48);
-		for (uint8_t i = 0; i < 2; i++) {
-			Sprites::drawOverwrite(94, butterfly_X[i], Images::Large_Butterfly, arduboy.frameCount % 96 < 48);
-		}
+			{
+				uint8_t deadCnt = 0;
 
-		for (uint8_t i = 0; i < 3; i++) {
-			Sprites::drawOverwrite(78, bees_X[i], Images::Large_Bee, arduboy.frameCount % 96 < 48);
-		}
-		break;
+				titleDecisionTimer++;
+
+				if (titleDecisionTimer > random(40, 120)) {
+					titleDecisionTimer = 0;
+					titleDesiredY = random(10, 54) << 4;
+				}
+
+				int16_t delta = titleDesiredY - player.yCoord;
+				player.yCoord += delta / 16;
+				player.yCoord += (int16_t)(sin((float)arduboy.frameCount * 0.11f) * (1 << 4));
+
+				int8_t offset = (int8_t)(sin((float)arduboy.frameCount * 0.025f) * 8.0f) << 4;
+
+				if (enemies[0].active && enemies[0].hp < 3) {
+					Sprites::drawOverwrite(enemies[0].xCoord >> 4, (enemies[0].yCoord + offset) >> 4, Images::Large_Boss, arduboy.getFrameCountHalf(96));
+
+				}
+
+				for (uint8_t i = 0; i < 2; i++) {
+					if (enemies[i + 1].active && enemies[i + 1].hp < 3) {
+						Sprites::drawOverwrite(enemies[i + 1].xCoord >> 4, (enemies[i + 1].yCoord + offset) >> 4, Images::Large_Butterfly, arduboy.getFrameCountHalf(96));
+					}
+				}
+
+				for (uint8_t i = 0; i < 3; i++) {
+					if (enemies[i + 3].active && enemies[i + 3].hp < 3) {
+						Sprites::drawOverwrite(enemies[i + 3].xCoord >> 4, (enemies[i + 3].yCoord + offset) >> 4, Images::Large_Bee, arduboy.getFrameCountHalf(96));
+
+					}
+
+				}
+
+				if (enemies[0].hp > 0 && enemies[0].hp < 8) {
+					Sprites::drawExternalMask((enemies[0].xCoord >> 4) - 12, ((enemies[0].yCoord + offset) >> 4) - 12, Images::Explosion, Images::Explosion_Mask, enemies[0].hp, enemies[0].hp);
+
+				}
+
+				for (uint8_t i = 0; i < 2; i++) {
+					if (enemies[i + 1].hp > 0 && enemies[i + 1].hp < 8) {
+						Sprites::drawExternalMask((enemies[i + 1].xCoord >> 4) - 14, ((enemies[i + 1].yCoord + offset) >> 4) - 14, Images::Explosion, Images::Explosion_Mask, enemies[i + 1].hp, enemies[i + 1].hp);
+
+					}
+				}
+
+				for (uint8_t i = 0; i < 3; i++) {
+					if (enemies[i + 3].hp > 0 && enemies[i + 3].hp < 8) {
+						Sprites::drawExternalMask((enemies[i + 3].xCoord >> 4) - 14, ((enemies[i + 3].yCoord + offset) >> 4) - 14, Images::Explosion, Images::Explosion_Mask, enemies[i + 3].hp, enemies[i + 3].hp);
+
+					}
+				}
+				Sprites::drawOverwrite(player.xCoord >> 4, player.yCoord >> 4, Images::LargePlayer, arduboy.isFrameCount(2));
+
+
+				// Check for dead and dying enemies ..
+
+				bool exploding = false;
+
+				for (uint8_t j = 0; j < 6; j++) {
+
+					if (enemies[j].hp == 8) {
+						Serial.print(j);
+						Serial.print(" ");
+						deadCnt++;
+						continue;
+					}
+
+					if (enemies[j].hp == 0) {
+						continue;
+					}
+
+					exploding = true;
+					if (arduboy.isFrameCount(2) == 0) {
+						enemies[j].hp++;
+					}
+				}
+				Serial.println(" ");
+
+
+				// If there are only two or less enemies, make sure the player moves towards them .. (otherwise the title screen can go on forever).
+				uint8_t aliveCnt = 6 - deadCnt;
+
+				if (aliveCnt <= 2 && aliveCnt > 0) {
+
+					int16_t targetY = 0;
+
+					for (uint8_t i = 0; i < 6; i++) {
+						if (enemies[i].hp == 0) {   // still alive
+							targetY += enemies[i].yCoord + offset;
+						}
+					}
+
+					titleDesiredY = targetY / aliveCnt;
+
+					// Small randomness so it doesn't look perfect.
+					titleDesiredY += (random(-4, 5) << 4);
+
+				}
+				else {
+
+					if (titleDecisionTimer > random(40, 120)) {
+						titleDecisionTimer = 0;
+						titleDesiredY = random(10, 54) << 4;
+					}
+
+				}
+
+
+				if (!exploding && arduboy.isFrameCount(50)) {
+					firePlayerBullet(12);
+					// DEBUG_BREAK
+				}
+
+
+				// Render bullets ..
+
+				for (uint8_t i = 0; i < MAX_PLAYER_BULLETS; i++) {
+
+					if (!pBullets[i].active) continue;
+
+					pBullets[i].xCoord += pBullets[i].vx;
+
+					if (pBullets[i].xCoord > (120 << 4)) {
+						pBullets[i].active = false;
+						continue;
+					}
+
+					arduboy.drawFastHLine(pBullets[i].xCoord >> 4, pBullets[i].yCoord >> 4, 3, WHITE);
+				}
+
+				for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
+
+					if (!pBullets[b].active) continue;
+
+					for (uint8_t e = 0; e < 6; e++) {
+
+						if (enemies[e].hp != 0) continue;
+
+						int16_t ex = enemies[e].xCoord >> 4;
+						int16_t ey = (enemies[e].yCoord + offset) >> 4;
+						int16_t bx = pBullets[b].xCoord >> 4;
+						int16_t by = pBullets[b].yCoord >> 4;
+
+						uint8_t enemySize = (e == 0) ? 16 : 11;
+
+						if (bx >= ex && bx <= ex + enemySize && by >= ey && by <= ey + enemySize) {
+
+							pBullets[b].active = false;
+							enemies[e].hp = 1;
+							spawnParticles(ex, ey, 8);
+
+							break;
+
+						}
+
+					}
+
+				}
+
+				if (deadCnt == 6) {
+					phase = 2;
+					counter = 0;
+				}
+
+			}
+
+			break;
+
+		case 2:
+			{
+				counter++;
+
+				if (counter > 32) {
+					phase = 3;
+					counter = 0;
+				}
+
+				int16_t delta = titleDesiredY - player.yCoord;
+				player.yCoord += delta / 16;
+				player.yCoord += (int16_t)(sin((float)arduboy.frameCount * 0.11f) * (1 << 4));
+				Sprites::drawOverwrite(player.xCoord >> 4, player.yCoord >> 4, Images::LargePlayer, arduboy.isFrameCount(2));
+
+			}
+			break;
+
+		case 3:
+
+			if (counter < 31) {
+
+				counter++;
+
+				if (arduboy.isFrameCount(2)) {
+					player.xCoord -= (1 << 4);
+				}
+
+			}
+			else if (counter == 31) {
+
+				player.xCoord -= (2 << 4);
+				phase = 4;
+
+			}
+
+			Sprites::drawOverwrite(66 + Title_Coords[counter], 0, Images::Galaga_Title, 0);
+			Sprites::drawOverwrite(player.xCoord >> 4, player.yCoord >> 4, Images::LargePlayer, arduboy.isFrameCount(2));
+
+			if (phase == 4) {
+				counter = 0;
+			}
+
+			break;
+
+		case 4:
+
+			if (counter < 31) {
+				counter++;				
+			}	
+			else {
+				Sprites::drawOverwrite(50, 20, Images::PressA, 0);
+			}
+
+			Sprites::drawOverwrite(66, 0, Images::Galaga_Title, 0);
+			break;
 
 	}
 
-	Sprites::drawOverwrite(33, 0, Images::Galaga_Title, 0);
-	Sprites::drawOverwrite(24, 8, Images::LargePlayer, arduboy.frameCount % 2);
+	// Sprites::drawOverwrite(33, 0, Images::Galaga_Title, 0);
 
 	if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
 		resetGame();
 		gameState = GameState::PLAYING;
-	} 
+	}
 
 }

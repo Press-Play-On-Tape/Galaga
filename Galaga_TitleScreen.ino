@@ -88,14 +88,15 @@ void titleScreen() {
 			counter++;
 
 			if (arduboy.isFrameCount(2) == 0 && player.xCoord < 0) {
-				Serial.print(player.xCoord);
 				player.xCoord += (1 << 4);
 			}
 
 			if (counter == 51) {
+
 				phase = 1;
 				counter = 0;
 				arduboy.frameCount = 0;
+
 			}
 
 			break;
@@ -107,8 +108,10 @@ void titleScreen() {
 				titleDecisionTimer++;
 
 				if (titleDecisionTimer > random(40, 120)) {
+
 					titleDecisionTimer = 0;
 					titleDesiredY = random(10, 54) << 4;
+
 				}
 
 				int16_t delta = titleDesiredY - player.yCoord;
@@ -131,14 +134,11 @@ void titleScreen() {
 				for (uint8_t i = 0; i < 3; i++) {
 					if (enemies[i + 3].active && enemies[i + 3].hp < 3) {
 						Sprites::drawOverwrite(enemies[i + 3].xCoord >> 4, (enemies[i + 3].yCoord + offset) >> 4, Images::Large_Bee, arduboy.getFrameCountHalf(96));
-
 					}
-
 				}
 
 				if (enemies[0].hp > 0 && enemies[0].hp < 8) {
 					Sprites::drawExternalMask((enemies[0].xCoord >> 4) - 12, ((enemies[0].yCoord + offset) >> 4) - 12, Images::Explosion, Images::Explosion_Mask, enemies[0].hp, enemies[0].hp);
-
 				}
 
 				for (uint8_t i = 0; i < 2; i++) {
@@ -151,9 +151,9 @@ void titleScreen() {
 				for (uint8_t i = 0; i < 3; i++) {
 					if (enemies[i + 3].hp > 0 && enemies[i + 3].hp < 8) {
 						Sprites::drawExternalMask((enemies[i + 3].xCoord >> 4) - 14, ((enemies[i + 3].yCoord + offset) >> 4) - 14, Images::Explosion, Images::Explosion_Mask, enemies[i + 3].hp, enemies[i + 3].hp);
-
 					}
 				}
+
 				Sprites::drawOverwrite(player.xCoord >> 4, player.yCoord >> 4, Images::LargePlayer, arduboy.isFrameCount(2));
 
 
@@ -164,8 +164,6 @@ void titleScreen() {
 				for (uint8_t j = 0; j < 6; j++) {
 
 					if (enemies[j].hp == 8) {
-						Serial.print(j);
-						Serial.print(" ");
 						deadCnt++;
 						continue;
 					}
@@ -175,14 +173,16 @@ void titleScreen() {
 					}
 
 					exploding = true;
+
 					if (arduboy.isFrameCount(2) == 0) {
 						enemies[j].hp++;
 					}
+
 				}
-				Serial.println(" ");
 
 
 				// If there are only two or less enemies, make sure the player moves towards them .. (otherwise the title screen can go on forever).
+
 				uint8_t aliveCnt = 6 - deadCnt;
 
 				if (aliveCnt <= 2 && aliveCnt > 0) {
@@ -196,8 +196,6 @@ void titleScreen() {
 					}
 
 					titleDesiredY = targetY / aliveCnt;
-
-					// Small randomness so it doesn't look perfect.
 					titleDesiredY += (random(-4, 5) << 4);
 
 				}
@@ -210,10 +208,8 @@ void titleScreen() {
 
 				}
 
-
-				if (!exploding && arduboy.isFrameCount(50)) {
+				if (!exploding && arduboy.isFrameCount(32)) {
 					firePlayerBullet(12);
-					// DEBUG_BREAK
 				}
 
 
@@ -252,8 +248,6 @@ void titleScreen() {
 
 							pBullets[b].active = false;
 							enemies[e].hp = 1;
-							spawnParticles(ex, ey, 8);
-
 							break;
 
 						}

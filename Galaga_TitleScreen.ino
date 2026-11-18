@@ -13,7 +13,6 @@ uint8_t Title_Coords[] = {
 	1,  1,
 };
 
-uint8_t phase = 0;
 uint8_t counter = 0;
 
 uint16_t titleDecisionTimer = 0;
@@ -62,16 +61,16 @@ void titleScreen_Init() {
 		pBullets[i].active = false;
 
 
-	gameState = GameState::Title;
+	gameState = GameState::Title_Entrace;
 	arduboy.invert(false);
 
 }
 
 void titleScreen() {
 
-	switch (phase) {
+	switch (gameState) {
 
-		case 0:
+		case GameState::Title_Entrace:
 
 			Sprites::drawOverwrite((enemies[0].xCoord + (Title_Coords[counter] << 4)) >> 4, enemies[0].yCoord >> 4, Images::Large_Boss, arduboy.getFrameCountHalf(96));
 
@@ -93,7 +92,7 @@ void titleScreen() {
 
 			if (counter == 51) {
 
-				phase = 1;
+				gameState = GameState::Title_Shooting;
 				counter = 0;
 				arduboy.frameCount = 0;
 
@@ -101,7 +100,7 @@ void titleScreen() {
 
 			break;
 
-		case 1:
+		case GameState::Title_Shooting:
 			{
 				uint8_t deadCnt = 0;
 
@@ -257,7 +256,7 @@ void titleScreen() {
 				}
 
 				if (deadCnt == 6) {
-					phase = 2;
+					gameState = GameState::Title_Pause;
 					counter = 0;
 				}
 
@@ -265,12 +264,12 @@ void titleScreen() {
 
 			break;
 
-		case 2:
+		case GameState::Title_Pause:
 			{
 				counter++;
 
 				if (counter > 32) {
-					phase = 3;
+					gameState = GameState::Title_Withdraw;
 					counter = 0;
 				}
 
@@ -282,7 +281,7 @@ void titleScreen() {
 			}
 			break;
 
-		case 3:
+		case GameState::Title_Withdraw:
 
 			if (counter < 31) {
 
@@ -296,20 +295,20 @@ void titleScreen() {
 			else if (counter == 31) {
 
 				player.xCoord -= (2 << 4);
-				phase = 4;
+				gameState = GameState::Title_PressA;
 
 			}
 
 			Sprites::drawOverwrite(66 + Title_Coords[counter], 0, Images::Galaga_Title, 0);
 			Sprites::drawOverwrite(player.xCoord >> 4, player.yCoord >> 4, Images::LargePlayer, arduboy.isFrameCount(2));
 
-			if (phase == 4) {
+			if (gameState == GameState::Title_PressA) {
 				counter = 0;
 			}
 
 			break;
 
-		case 4:
+		case GameState::Title_PressA:
 
 			if (counter < 31) {
 				counter++;				
@@ -327,7 +326,7 @@ void titleScreen() {
 
 	if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
 		resetGame();
-		gameState = GameState::PLAYING;
+		gameState = GameState::Playing;
 	}
 
 }

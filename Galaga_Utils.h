@@ -85,7 +85,7 @@ void checkEnemyAndPlayerCollision(uint8_t enemyIdx) {
 			beep.tone(beep.freq(50), 25);
 
 			if (player.lives == 0) {
-				gameState = GameState::GAMEOVER;
+				gameState = GameState::GameOver;
 			}
 			else {
 				player.health = 100;
@@ -318,7 +318,7 @@ void checkPlayerAndEnemyBulletCollision(uint8_t bulletIdx) {
 			beep.tone(beep.freq(50), 25);
 
 			if (player.lives == 0) {
-				gameState = GameState::GAMEOVER;
+				gameState = GameState::GameOver;
 			}
 			else {
 				player.health = 100;

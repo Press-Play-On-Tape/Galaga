@@ -20,13 +20,9 @@ BeepPin1 beep;
 #define MAX_PARTICLES 12
 #define MAX_STARS 16
 
-// --- Data Structures ---
-
-
-
 
 // --- Game State Variables ---
-enum class GameState : uint8_t { SplahScreen, Title_Init, Title, PLAYING, GAMEOVER };
+
 GameState gameState = GameState::SplahScreen;
 
 Bullet pBullets[MAX_PLAYER_BULLETS];
@@ -571,41 +567,64 @@ void updatePlaying() {
 
 			if (!enemies[i].returning) {
 
-				if (enemies[i].xCoord < (-40 << 4)) {
-					Serial.print("BREAKAWAY ");
-					Serial.print(i);
-					Serial.print(" X=");
-					Serial.print(enemies[i].xCoord >> 4);
-					Serial.print(" Y=");
-					Serial.println(enemies[i].yCoord >> 4);
+				// Since xCoord is the forward dive axis (moving from right ~110 down to left ~0 and off-screen < -16),
+				// check if the enemy has gone off the bottom/screen edge.
+				if (enemies[i].xCoord < (-16 << 4) || enemies[i].yCoord < (-20 << 4) || enemies[i].yCoord > (80 << 4)) {
 
-					enemies[i].returning = true;
+					Side side = static_cast<Side>(random(0, 3));
+					enemies[i].spawnSide = side;
 
-					continue;   // <<<<<<<<<< IMPORTANT
+					switch (side) {
+						case Side::Left:  
+							enemies[i].xCoord = -24 << 4;
+							enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
+							break;
+						case Side::Right:  
+							enemies[i].xCoord = 144 << 4;
+							enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
+							break;
+						default: // top re-entry
+							enemies[i].xCoord = ((enemies[i].homeX >> 4) + random(-20, 21)) << 4;
+							enemies[i].yCoord = -24 << 4;
+							break;
+					}
+
+					enemies[i].diving = false;
+					enemies[i].returning = false;
+					enemies[i].queued = false;
+					enemies[i].arriving = true;
+					enemies[i].entryPhase = 0;
+					enemies[i].divePhase = 0;
+					enemies[i].divePattern = 255;
+
+					continue;
 				}
 
-				int16_t attackX = player.xCoord + random(-(24 << 4), (24 << 4));
-				int16_t attackY = 48 << 4;   // attack zone near player
-				int16_t dx = attackX - enemies[i].xCoord;
-				int16_t dy = attackY - enemies[i].yCoord;
+				// Target past the player along xCoord so they dive all the way off screen, 
+				// and track the player's lateral position on yCoord.
+				int16_t attackTargetX = -10 << 4; // Dive all the way past the player and off-screen
+				int16_t attackTargetY = player.yCoord; // Track player's lateral position
+				
+				int16_t dx = attackTargetX - enemies[i].xCoord;
+				int16_t dy = attackTargetY - enemies[i].yCoord;
+				
 				int32_t len = max((int32_t)1, (int32_t)sqrt((float)dx * dx + (float)dy * dy));
 
 				enemies[i].divePhase += 1;
+
+				// Apply dive movement along both axes correctly aligned with the rotated screen layout
 				enemies[i].xCoord += (dx * diveSpeed) / len;
 				enemies[i].yCoord += (dy * diveSpeed) / len;
 
-				int16_t oldY = enemies[i].yCoord;
-
-
+				// Optional subtle lateral weave
 				if (enemies[i].divePattern == 0) {
-					enemies[i].xCoord += (int16_t)(sin((float)enemies[i].divePhase * 0.06) * 6.0 * enemies[i].diveDirection);
+					enemies[i].yCoord += (int16_t)(sin((float)enemies[i].divePhase * 0.06) * 1.5 * enemies[i].diveDirection);
 				}
 				else if (enemies[i].divePattern == 1) {
-					enemies[i].xCoord += (int16_t)(cos((float)enemies[i].divePhase * 0.08f) * 8.0f * enemies[i].diveDirection);
+					enemies[i].yCoord += (int16_t)(cos((float)enemies[i].divePhase * 0.08f) * 2.0f * enemies[i].diveDirection);
 				}
 
-				if (enemies[i].yCoord < (2 << 4)) enemies[i].yCoord = 2 << 4;
-
+				// Firing check during dive
 				uint8_t firingThreshold = wave + (survivalTimer / 600);
 				int16_t dxPlayer = abs((player.xCoord >> 4) - (enemies[i].xCoord >> 4));
 
@@ -780,17 +799,17 @@ void loop() {
 			titleScreen_Init();
 			[[fallthrough]]
 
-		case GameState::Title:
+		case GameState::Title_Entrace ... GameState::Title_PressA:
 			updateStars();
 			titleScreen();
 			break;
 
-		case GameState::PLAYING:
+		case GameState::Playing:
 			updateStars();
 			updatePlaying();
 			break;
 
-		case GameState::GAMEOVER:
+		case GameState::GameOver:
 
 			updateStars();
 			arduboy.invert(false);
@@ -800,7 +819,7 @@ void loop() {
 			renderScore(score);
 			if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
 				resetGame();
-				gameState = GameState::PLAYING;
+				gameState = GameState::Playing;
 			}
 
 			break;

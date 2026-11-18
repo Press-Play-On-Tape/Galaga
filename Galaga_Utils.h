@@ -40,7 +40,7 @@ void spawnMothership() {
 
 void checkEnemyAndPlayerCollision(uint8_t enemyIdx) {
 
-	uint8_t enemySz = (enemies[enemyIdx].type == 2) ? 7 : 6;
+	uint8_t enemySz = (enemies[enemyIdx].type == EnemyType::Boss) ? 7 : 6;
 	bool canCollide = enemies[enemyIdx].diving;
 
 	Rect enemyRect{
@@ -242,7 +242,7 @@ void checkHealthPackCollision() {
 
 void checkEnemyAndPlayerBulletCollision(uint8_t enemyIdx) {
 
-	uint8_t enemySz = (enemies[enemyIdx].type == 2) ? 7 : 6;
+	uint8_t enemySz = (enemies[enemyIdx].type == EnemyType::Boss) ? 7 : 6;
 
 	Rect enemyRect{
 		(int16_t)(enemies[enemyIdx].xCoord >> 4),
@@ -270,11 +270,14 @@ void checkEnemyAndPlayerBulletCollision(uint8_t enemyIdx) {
 				enemies[enemyIdx].active = false;
 				enemies[enemyIdx].active = false;
 				spawnParticles(enemies[enemyIdx].xCoord >> 4, enemies[enemyIdx].yCoord >> 4, 12);
-				score += (enemies[enemyIdx].type + 1) * 25 * (enemies[enemyIdx].diving ? 2 : 1);
+				score += (static_cast<uint8_t>(enemies[enemyIdx].type) + 1) * 25 * (enemies[enemyIdx].diving ? 2 : 1);
 				beep.tone(beep.freq(160), 4);
+
 			}
 			else {
+
 				beep.tone(beep.freq(500), 2);
+
 			}
 			break;
 
@@ -416,6 +419,42 @@ void fireEnemyBullet(int16_t x, int16_t y) {
 			eBullets[i].vx = -bSpeed;
 			eBullets[i].active = true;
 			break;
+
+		}
+
+	}
+
+}
+
+
+void updateStars() {
+
+	for (uint8_t i = 0; i < MAX_STARS; i++) {
+
+		stars[i].xCoord -= stars[i].speed;
+
+		if (stars[i].xCoord < 0) {
+			stars[i].xCoord = 114;
+			stars[i].yCoord = random(0, 64);
+		}
+
+		if ((arduboy.frameCount % 4) == (i % 4)) {
+			arduboy.drawPixel(stars[i].xCoord, stars[i].yCoord, WHITE);
+		}
+
+	}
+
+}
+
+
+void updateBullets() {
+
+	for (uint8_t i = 0; i < MAX_PLAYER_BULLETS; i++) {
+
+		if (pBullets[i].active) {
+
+			pBullets[i].xCoord += pBullets[i].vx;
+			if (pBullets[i].xCoord > 115 << 4) pBullets[i].active = false;
 
 		}
 

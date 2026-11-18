@@ -2,7 +2,7 @@
 
 #include "src/utils/Arduboy2Ext.h"
 
-void updateAndRenderBullets() {
+void renderBullets() {
 
 	for (uint8_t i = 0; i < MAX_PLAYER_BULLETS; i++) {
 
@@ -97,10 +97,12 @@ void renderEnemy(uint8_t enemyIdx) {
 	if (enemies[enemyIdx].active) {
 
 		const uint8_t* sprite = Images::beeSprite;
-		if (enemies[enemyIdx].type == 1) {
+		
+		if (enemies[enemyIdx].type == EnemyType::Butterfly) {
 			sprite = Images::butterflySprite;
 		}
-		else if (enemies[enemyIdx].type == 2) {
+
+		else if (enemies[enemyIdx].type == EnemyType::Boss) {
 			sprite = Images::bossSprite;
 		}
 
@@ -110,6 +112,19 @@ void renderEnemy(uint8_t enemyIdx) {
 		if (eX >= -8 && eX < 128 && eY >= -8 && eY < 64) {
 			Sprites::drawSelfMasked(eX, eY, sprite, 0);
 		}
+
+	}
+	
+}
+
+void renderHealthPack() {
+
+	int16_t hpX = healthPack.xCoord >> 4;
+	int16_t hpY = healthPack.yCoord >> 4;
+	
+	if (healthPack.active) {
+
+		Sprites::drawSelfMasked(hpX, hpY, Images::healthPackSprite, 0);
 
 	}
 	

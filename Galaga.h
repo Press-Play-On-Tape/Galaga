@@ -59,6 +59,23 @@ uint16_t formationFrame = 0;
 #include "Galaga_Utils.h"
 
 
+bool formationComplete() {
+
+	bool complete = true;
+
+	for (uint8_t i = 0; i < MAX_ENEMIES; i++) {
+
+		if (enemies[i].active && (enemies[i].queued || enemies[i].arriving)) {
+			complete = false;
+			break;
+		}
+
+	}
+
+	return complete;
+
+}
+
 void initWave() {
 
 	mothership.active = false;
@@ -72,16 +89,16 @@ void initWave() {
 	formationFrame = 0;
 
 	int16_t waveYShift = 0;
-
 	uint8_t idx = 0;
+
 	for (uint8_t c = 0; c < ENEMY_COLS; c++) {
+
 		for (uint8_t r = 0; r < ENEMY_ROWS; r++) {
+
 			const uint8_t COL_SPACING = 10;
 			const uint8_t ROW_SPACING = 9;
 
-			// enemies[idx].homeX = (60 + (c * COL_SPACING)) << 4;
 			enemies[idx].homeX = (72 + (c * COL_SPACING)) << 4;
-
 			enemies[idx].homeY = ((6 + (r * ROW_SPACING)) + waveYShift) << 4;
 
 			if (enemies[idx].homeY < (2 << 4)) enemies[idx].homeY = 2 << 4;
@@ -92,46 +109,43 @@ void initWave() {
 			enemies[idx].queued = true;
 			enemies[idx].arriving = false;
 
-			// Enter from sides at least 24 pixels above the bottom (Y between 4
-			// and 38)
-			uint8_t side = random(0, 3);
+			// Enter from sides at least 24 pixels above the bottom (Y between 4 and 38)
+			Side side = static_cast<Side>(random(0, 3));
 
 			enemies[idx].spawnSide = side;
 
 			switch (side) {
-			case 0:  // far left
 
-				enemies[idx].xCoord = -40 << 4;
-				enemies[idx].yCoord = random(4, 56) << 4;
+				case Side::Left:
 
-				break;
+					enemies[idx].xCoord = -40 << 4;
+					enemies[idx].yCoord = random(4, 56) << 4;
+					break;
 
-			case 1:  // far right
+				case Side::Right:  // far right
 
-				enemies[idx].xCoord = 168 << 4;
-				enemies[idx].yCoord = random(4, 56) << 4;
+					enemies[idx].xCoord = 168 << 4;
+					enemies[idx].yCoord = random(4, 56) << 4;
+					break;
 
-				break;
+				default:  
 
-			default:  // top
+					enemies[idx].xCoord = random(40, 100) << 4;
+					enemies[idx].yCoord = -32 << 4;
+					break;
 
-				enemies[idx].xCoord = random(40, 100) << 4;
-
-				enemies[idx].yCoord = -32 << 4;
-
-				break;
 			}
 
 			if (c == 1) {
-				enemies[idx].type = 1;  // Butterfly
+				enemies[idx].type = EnemyType::Butterfly;
 				enemies[idx].hp = 1;
 			}
 			else if (c >= 2) {
-				enemies[idx].type = 2;  // Boss
+				enemies[idx].type = EnemyType::Boss;
 				enemies[idx].hp = 2;
 			}
 			else {
-				enemies[idx].type = 0;  // Bee
+				enemies[idx].type = EnemyType::Bee;
 				enemies[idx].hp = 1;
 			}
 			idx++;
@@ -158,39 +172,52 @@ void resetGame() {
 }
 
 void triggerRandomDives() {
+
 	uint8_t maxSquad = min(5, 1 + (wave / 2) + (survivalTimer / 800));
 	uint8_t squadSize = random(1, maxSquad + 1);
 	uint8_t pattern = random(0, 3);
 
 	for (uint8_t s = 0; s < squadSize; s++) {
+
 		int16_t target = -1;
 		uint8_t startIndex = random(0, MAX_ENEMIES);
 
 		for (uint8_t i = 0; i < MAX_ENEMIES; i++) {
+
 			uint8_t idx = (startIndex + i) % MAX_ENEMIES;
+
 			if (enemies[idx].active &&
 				!enemies[idx].diving &&
 				!enemies[idx].returning &&
 				!enemies[idx].arriving &&
 				!enemies[idx].queued) {
 				bool rowOccupied = false;
+
 				for (uint8_t d = 0; d < MAX_ENEMIES; d++) {
+
 					if (enemies[d].diving && abs(enemies[d].homeY - enemies[idx].homeY) < (8 << 4)) {
 						rowOccupied = true;
 						break;
 					}
+
 				}
+
 				if (!rowOccupied) {
+
 					if (abs(
 						enemies[idx].yCoord -
 						(enemies[idx].homeY + formationOffsetY)
 					) > (4 << 4)) {
 						continue;
 					}
+
 					target = idx;
 					break;
+
 				}
+
 			}
+
 		}
 
 		if (target != -1) {
@@ -243,18 +270,6 @@ void setup() {
 	}
 }
 
-void updateStars() {
-	for (uint8_t i = 0; i < MAX_STARS; i++) {
-		stars[i].xCoord -= stars[i].speed;
-		if (stars[i].xCoord < 0) {
-			stars[i].xCoord = 114;
-			stars[i].yCoord = random(0, 64);
-		}
-		if ((arduboy.frameCount % 4) == (i % 4)) {
-			arduboy.drawPixel(stars[i].xCoord, stars[i].yCoord, WHITE);
-		}
-	}
-}
 
 void updatePlaying() {
 
@@ -308,7 +323,8 @@ void updatePlaying() {
 
 	// Update and render Bullets ..
 
-	updateAndRenderBullets();
+	updateBullets();
+	renderBullets();
 
 
 	// Handle health packs ..
@@ -330,19 +346,17 @@ void updatePlaying() {
 
 		}
 
-		if (healthPack.active) {
-
-			checkHealthPackCollision();
-			Sprites::drawSelfMasked(hpX, hpY, Images::healthPackSprite, 0);
-
-		}
-
 	}
+	
+	if (healthPack.active) 	checkHealthPackCollision();
+	renderHealthPack();
+
 
 
 
 	arrivalReleaseTimer++;
 	uint8_t releaseThreshold = max(10, 25 - (survivalTimer / 300));
+
 	if (arrivalReleaseTimer > releaseThreshold) {
 
 		arrivalReleaseTimer = 0;
@@ -371,38 +385,34 @@ void updatePlaying() {
 
 			if (!enemies[idx].active) {
 
+				Side side = static_cast<Side>(random(0, 3));
+
 				enemies[idx].active = true;
-				enemies[idx].hp = (enemies[idx].type == 2) ? 2 : 1;
+				enemies[idx].hp = (enemies[idx].type == EnemyType::Boss) ? 2 : 1;
 				enemies[idx].queued = true;
 				enemies[idx].arriving = false;
-				uint8_t side = random(0, 3);
-
 				enemies[idx].spawnSide = side;
 
 				switch (side) {
-				case 0:  // left
 
-					enemies[idx].xCoord = -24 << 4;
+					case Side::Left: 
 
-					enemies[idx].yCoord = ((enemies[idx].homeY >> 4) + random(-6, 7)) << 4;
+						enemies[idx].xCoord = -24 << 4;
+						enemies[idx].yCoord = ((enemies[idx].homeY >> 4) + random(-6, 7)) << 4;
+						break;
 
-					break;
+					case Side::Right:
 
-				case 1:  // right
+						enemies[idx].xCoord = 144 << 4;
+						enemies[idx].yCoord = ((enemies[idx].homeY >> 4) + random(-6, 7)) << 4;
+						break;
 
-					enemies[idx].xCoord = 144 << 4;
+					default:
 
-					enemies[idx].yCoord = ((enemies[idx].homeY >> 4) + random(-6, 7)) << 4;
+						enemies[idx].xCoord = ((enemies[idx].homeX >> 4) + random(-20, 21)) << 4;
+						enemies[idx].yCoord = -24 << 4;
+						break;
 
-					break;
-
-				default:  // top
-
-					enemies[idx].xCoord = ((enemies[idx].homeX >> 4) + random(-20, 21)) << 4;
-
-					enemies[idx].yCoord = -24 << 4;
-
-					break;
 				}
 				break;
 
@@ -412,44 +422,14 @@ void updatePlaying() {
 
 	}
 
-	bool formationComplete = true;
-
-	for (uint8_t i = 0; i < MAX_ENEMIES; i++) {
-
-		if (enemies[i].active && (enemies[i].queued || enemies[i].arriving)) {
-			formationComplete = false;
-			break;
-		}
-
-	}
-
-	if (formationComplete) {
+	if (formationComplete()) {
 		formationFrame++;
 	}
 
-	// uint8_t deadColumns = 0;
-
-	// for (uint8_t c = 0; c < ENEMY_COLS; c++) {
-
-	// 	bool colDead = true;
-
-	// 	for (uint8_t r = 0; r < ENEMY_ROWS; r++) {
-
-	// 		if (enemies[c * ENEMY_ROWS + r].active) {
-	// 			colDead = false;
-	// 			break;
-	// 		}
-
-	// 	}
-
-	// 	if (colDead) deadColumns++;
-
-	// }
 
 	float dynamicAmplitude = 4.0f;
 
 	formationOffsetX = 0;
-
 	formationOffsetY = (1 << 4) + (int16_t)(sin((float)formationFrame * 0.025f) * dynamicAmplitude * 16.0f);
 
 	if (!mothership.active && formationComplete) {
@@ -466,6 +446,7 @@ void updatePlaying() {
 			if (mothership.yCoord < (4 << 4) || mothership.yCoord >(54 << 4)) {
 				mothership.dir *= -1;
 			}
+
 			if (random(0, 250) == 0) {
 				mothership.diving = true;
 				mothership.phase = 0;
@@ -510,6 +491,7 @@ void updatePlaying() {
 	}
 
 	uint8_t activeEnemies = 0;
+
 	for (uint8_t i = 0; i < MAX_ENEMIES; i++) {
 
 		if (!enemies[i].active) continue;
@@ -531,13 +513,13 @@ void updatePlaying() {
 
 			switch (enemies[i].spawnSide) {
 
-				case 0:  // left spiral
+				case Side::Left:  // left spiral
 
 					curveY = (int16_t)(sin(enemies[i].entryPhase * 0.06f) * (12 << 4));
 					curveX = (int16_t)(cos(enemies[i].entryPhase * 0.05f) * (5 << 4));
 					break;
 
-				case 1:  // right spiral
+				case Side::Right:  // right spiral
 
 					curveY = (int16_t)(sin(enemies[i].entryPhase * 0.06f) * (12 << 4));
 					curveX = -(int16_t)(cos(enemies[i].entryPhase * 0.05f) * (5 << 4));
@@ -588,8 +570,7 @@ void updatePlaying() {
 			int16_t diveSpeed = 10 + (wave * 1) + (survivalTimer / 300);
 
 			if (!enemies[i].returning) {
-				// Once we've reached the player area,
-				// commit to an escape run.
+
 				if (enemies[i].xCoord < (-40 << 4)) {
 					Serial.print("BREAKAWAY ");
 					Serial.print(i);
@@ -603,13 +584,13 @@ void updatePlaying() {
 					continue;   // <<<<<<<<<< IMPORTANT
 				}
 
-				enemies[i].divePhase += 1;
 				int16_t attackX = player.xCoord + random(-(24 << 4), (24 << 4));
 				int16_t attackY = 48 << 4;   // attack zone near player
 				int16_t dx = attackX - enemies[i].xCoord;
 				int16_t dy = attackY - enemies[i].yCoord;
 				int32_t len = max((int32_t)1, (int32_t)sqrt((float)dx * dx + (float)dy * dy));
 
+				enemies[i].divePhase += 1;
 				enemies[i].xCoord += (dx * diveSpeed) / len;
 				enemies[i].yCoord += (dy * diveSpeed) / len;
 
@@ -645,28 +626,30 @@ void updatePlaying() {
 
 					if (enemies[i].yCoord > (96 << 4)) {
 
-						uint8_t side = random(0, 3);
+						Side side = static_cast<Side>(random(0, 3));
 						enemies[i].spawnSide = side;
 
 						switch (side) {
 
-							case 0:  // left
+							case Side::Left:  
+
 								enemies[i].xCoord = -24 << 4;
 								enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
 								break;
 
-							case 1:  // right
+							case Side::Right:  
+
 								enemies[i].xCoord = 144 << 4;
 								enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
 								break;
 
 							default: // top
+
 								enemies[i].xCoord = ((enemies[i].homeX >> 4) + random(-20, 21)) << 4;
 								enemies[i].yCoord = -24 << 4;
 								break;
 
 						}
-
 
 						enemies[i].returning = false;
 						enemies[i].arriving = true;
@@ -789,38 +772,38 @@ void loop() {
 
 	switch (gameState) {
 
-	case GameState::SplahScreen:
-		splashScreen();
-		break;
+		case GameState::SplahScreen:
+			splashScreen();
+			break;
 
-	case GameState::Title_Init:
-		titleScreen_Init();
-		[[fallthrough]]
+		case GameState::Title_Init:
+			titleScreen_Init();
+			[[fallthrough]]
 
-	case GameState::Title:
-		updateStars();
-		titleScreen();
-		break;
+		case GameState::Title:
+			updateStars();
+			titleScreen();
+			break;
 
-	case GameState::PLAYING:
-		updateStars();
-		updatePlaying();
-		break;
+		case GameState::PLAYING:
+			updateStars();
+			updatePlaying();
+			break;
 
-	case GameState::GAMEOVER:
+		case GameState::GAMEOVER:
 
-		updateStars();
-		arduboy.invert(false);
-		arduboy.setCursor(44, 25);
-		arduboy.print(F("OVER"));
-		arduboy.setCursor(40, 45);
-		renderScore(score);
-		if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
-			resetGame();
-			gameState = GameState::PLAYING;
-		}
+			updateStars();
+			arduboy.invert(false);
+			arduboy.setCursor(44, 25);
+			arduboy.print(F("OVER"));
+			arduboy.setCursor(40, 45);
+			renderScore(score);
+			if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
+				resetGame();
+				gameState = GameState::PLAYING;
+			}
 
-		break;
+			break;
 
 	}
 

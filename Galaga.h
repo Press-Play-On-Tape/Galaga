@@ -4,6 +4,7 @@
 #include "src/utils/Arduboy2Ext.h"
 #include "src/entities/Entities.h"
 
+
 Arduboy2Ext arduboy;
 BeepPin1 beep;
 
@@ -53,19 +54,10 @@ uint8_t arrivalReleaseTimer = 0;
 uint16_t replenishTimer = 0;
 uint16_t formationFrame = 0;
 
-// --- Helper Functions ---
-void spawnParticles(int16_t x, int16_t y, uint8_t count) {
-	for (uint8_t i = 0; i < MAX_PARTICLES && count > 0; i++) {
-		if (particles[i].life == 0) {
-			particles[i].xCoord = x << 4;
-			particles[i].yCoord = y << 4;
-			particles[i].vx = (int16_t)(random(0, 24) - 12);
-			particles[i].vy = (int16_t)(random(0, 24) - 12);
-			particles[i].life = random(8, 16);
-			count--;
-		}
-	}
-}
+
+#include "Galaga_Render.h"
+#include "Galaga_Utils.h"
+
 
 void initWave() {
 
@@ -147,6 +139,8 @@ void initWave() {
 	}
 }
 
+
+
 void resetGame() {
 
 	player.reset();
@@ -161,54 +155,6 @@ void resetGame() {
 	for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) eBullets[i].active = false;
 	initWave();
 
-}
-
-void firePlayerBullet(uint8_t offset = 4) {
-
-	if (dualShooterTimer > 0) {
-		for (uint8_t i = 0; i < MAX_PLAYER_BULLETS && i + 1 < MAX_PLAYER_BULLETS; i += 2) {
-			if (!pBullets[i].active && !pBullets[i + 1].active) {
-				pBullets[i].xCoord = player.xCoord + (4 << 4);
-				pBullets[i].yCoord = player.yCoord + (1 << 4);
-				pBullets[i].vx = 64;
-				pBullets[i].active = true;
-
-				pBullets[i + 1].xCoord = player.xCoord + (4 << 4);
-				pBullets[i + 1].yCoord = player.yCoord + (5 << 4);
-				pBullets[i + 1].vx = 64;
-				pBullets[i + 1].active = true;
-
-				beep.tone(beep.freq(880), 2);
-				break;
-			}
-		}
-	}
-	else {
-		for (uint8_t i = 0; i < MAX_PLAYER_BULLETS; i++) {
-			if (!pBullets[i].active) {
-				pBullets[i].xCoord = player.xCoord + (offset << 4);
-				pBullets[i].yCoord = player.yCoord + (3 << 4);
-				pBullets[i].vx = 64;
-				pBullets[i].active = true;
-				beep.tone(beep.freq(880), 2);
-				break;
-			}
-		}
-	}
-}
-
-void fireEnemyBullet(int16_t x, int16_t y) {
-	for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) {
-		if (!eBullets[i].active) {
-			eBullets[i].xCoord = x - (2 << 4);
-			eBullets[i].yCoord = y + (2 << 4);
-			int16_t bSpeed = 10 + (wave * 1) + (survivalTimer / 600);
-			if (bSpeed > 35) bSpeed = 35;
-			eBullets[i].vx = -bSpeed;
-			eBullets[i].active = true;
-			break;
-		}
-	}
 }
 
 void triggerRandomDives() {
@@ -249,12 +195,12 @@ void triggerRandomDives() {
 
 		if (target != -1) {
 
-    Serial.print("SELECT DIVER ");
-    Serial.print(target);
-    Serial.print(" HX=");
-    Serial.print(enemies[target].homeX >> 4);
-    Serial.print(" HY=");
-    Serial.println(enemies[target].homeY >> 4);
+			Serial.print("SELECT DIVER ");
+			Serial.print(target);
+			Serial.print(" HX=");
+			Serial.print(enemies[target].homeX >> 4);
+			Serial.print(" HY=");
+			Serial.println(enemies[target].homeY >> 4);
 
 			enemies[target].xCoord = enemies[target].homeX + formationOffsetX;
 			enemies[target].yCoord = enemies[target].homeY + formationOffsetY;
@@ -274,35 +220,6 @@ void triggerRandomDives() {
 		beep.tone(beep.freq(300), 4);
 	}
 
-}
-
-void drawVerticalScore(uint16_t currentScore) {
-	uint8_t digits[5];
-	uint32_t temp = currentScore;
-
-	for (uint8_t i = 0; i < 5; i++) {
-		digits[i] = temp % 10;
-		temp /= 10;
-	}
-
-	int16_t startY = 63 - 8;
-	for (uint8_t i = 0; i < 5; i++) {
-		Sprites::drawSelfMasked(121, startY, Images::Numbers, digits[i]);
-		startY -= 4;
-	}
-}
-
-void drawLivesAndHealth() {
-
-	uint8_t displayLives = (player.lives > 9) ? 9 : player.lives;
-	Sprites::drawSelfMasked(121, 2, Images::Numbers, displayLives);
-
-	arduboy.drawRect(120, 11, 6, 22, WHITE);
-	uint8_t fillHeight = (player.health * 18) / 100;
-
-	if (fillHeight > 18) fillHeight = 18;
-
-	arduboy.fillRect(122, 13, 2, fillHeight, WHITE);
 }
 
 void setup() {
@@ -388,83 +305,41 @@ void updatePlaying() {
 		firePlayerBullet();
 	}
 
-	for (uint8_t i = 0; i < MAX_PLAYER_BULLETS; i++) {
-		if (pBullets[i].active) {
-			pBullets[i].xCoord += pBullets[i].vx;
-			if (pBullets[i].xCoord > 115 << 4) pBullets[i].active = false;
-			arduboy.drawFastHLine(pBullets[i].xCoord >> 4, pBullets[i].yCoord >> 4, 3, WHITE);
-		}
-	}
 
-	// Health Pack logic
+	// Update and render Bullets ..
+
+	updateAndRenderBullets();
+
+
+	// Handle health packs ..
+
 	if (!healthPack.active) {
-		if (score >= 3000) {
-			healthPackSpawnTimer++;
-			if (healthPackSpawnTimer > 500) {
-				healthPackSpawnTimer = 0;
-				healthPack.active = true;
-				healthPack.xCoord = random(20, 100) << 4;
-				if (random(0, 2) == 0) {
-					healthPack.yCoord = -8 << 4;
-					healthPack.vy = random(4, 11);
-				}
-				else {
-					healthPack.yCoord = 64 << 4;
-					healthPack.vy = random(-11, -3);
-				}
-			}
-		}
+
+		launchHealthPack();
+
 	}
 	else {
+
 		healthPack.yCoord += healthPack.vy;
 		int16_t hpX = healthPack.xCoord >> 4;
 		int16_t hpY = healthPack.yCoord >> 4;
 
 		if (hpY < -10 || hpY > 70) {
-			healthPack.active = false;
-		}
-		else {
 
+			healthPack.active = false;
+
+		}
+
+		if (healthPack.active) {
+
+			checkHealthPackCollision();
 			Sprites::drawSelfMasked(hpX, hpY, Images::healthPackSprite, 0);
 
-
-			// Player shoots a health pack ..
-
-			for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
-
-				if (pBullets[b].active && pBullets[b].xCoord >= healthPack.xCoord &&
-					pBullets[b].xCoord <= healthPack.xCoord + (6 << 4) && pBullets[b].yCoord >= healthPack.yCoord &&
-					pBullets[b].yCoord <= healthPack.yCoord + (6 << 4)) {
-
-					pBullets[b].active = false;
-					healthPack.active = false;
-					int16_t healAmount = random(25, 51);
-					player.health += healAmount;
-					if (player.health > 100) player.health = 100;
-					spawnParticles(hpX, hpY, 6);
-					beep.tone(beep.freq(1046), 6);
-					break;
-
-				}
-
-			}
-
-
-			// Player collides with a health pack ..
-
-			if (healthPack.active && healthPack.xCoord + (6 << 4) > player.xCoord && healthPack.xCoord < player.xCoord + (7 << 4) &&
-				healthPack.yCoord + (6 << 4) > player.yCoord && healthPack.yCoord < player.yCoord + (7 << 4)) {
-
-				healthPack.active = false;
-				int16_t healAmount = random(25, 51);
-				player.health += healAmount;
-				if (player.health > 100) player.health = 100;
-				spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 6);
-				beep.tone(beep.freq(1046), 6);
-
-			}
 		}
+
 	}
+
+
 
 	arrivalReleaseTimer++;
 	uint8_t releaseThreshold = max(10, 25 - (survivalTimer / 300));
@@ -552,24 +427,24 @@ void updatePlaying() {
 		formationFrame++;
 	}
 
-	uint8_t deadColumns = 0;
+	// uint8_t deadColumns = 0;
 
-	for (uint8_t c = 0; c < ENEMY_COLS; c++) {
+	// for (uint8_t c = 0; c < ENEMY_COLS; c++) {
 
-		bool colDead = true;
+	// 	bool colDead = true;
 
-		for (uint8_t r = 0; r < ENEMY_ROWS; r++) {
+	// 	for (uint8_t r = 0; r < ENEMY_ROWS; r++) {
 
-			if (enemies[c * ENEMY_ROWS + r].active) {
-				colDead = false;
-				break;
-			}
+	// 		if (enemies[c * ENEMY_ROWS + r].active) {
+	// 			colDead = false;
+	// 			break;
+	// 		}
 
-		}
+	// 	}
 
-		if (colDead) deadColumns++;
+	// 	if (colDead) deadColumns++;
 
-	}
+	// }
 
 	float dynamicAmplitude = 4.0f;
 
@@ -579,18 +454,7 @@ void updatePlaying() {
 
 	if (!mothership.active && formationComplete) {
 
-		mothershipSpawnTimer++;
-
-		if (mothershipSpawnTimer > max(150, 350 - (survivalTimer / 4))) {
-			mothershipSpawnTimer = 0;
-			mothership.active = true;
-			mothership.diving = false;
-			mothership.xCoord = 110 << 4;
-			mothership.yCoord = 28 << 4;
-			mothership.hp = 3;
-			mothership.dir = (random(0, 2) == 0) ? 1 : -1;
-			mothership.phase = 0;
-		}
+		spawnMothership();
 
 	}
 	else if (mothership.active) {
@@ -637,12 +501,6 @@ void updatePlaying() {
 
 		diveTimer++;
 		uint16_t currentDiveInterval = max(25, 130 - (wave * 8) - (survivalTimer / 40));
-		
-Serial.print("diveTimer ");
-Serial.print(diveTimer);
-Serial.print(", currentDiveInterval ");
-Serial.println(currentDiveInterval);
-
 
 		if (diveTimer >= currentDiveInterval) {
 			diveTimer = 0;
@@ -672,25 +530,24 @@ Serial.println(currentDiveInterval);
 			int16_t curveY = 0;
 
 			switch (enemies[i].spawnSide) {
+
 				case 0:  // left spiral
 
 					curveY = (int16_t)(sin(enemies[i].entryPhase * 0.06f) * (12 << 4));
 					curveX = (int16_t)(cos(enemies[i].entryPhase * 0.05f) * (5 << 4));
-
 					break;
 
 				case 1:  // right spiral
 
 					curveY = (int16_t)(sin(enemies[i].entryPhase * 0.06f) * (12 << 4));
 					curveX = -(int16_t)(cos(enemies[i].entryPhase * 0.05f) * (5 << 4));
-
 					break;
 
 				default:  // top dive
 
 					curveX = (int16_t)(sin(enemies[i].entryPhase * 0.08f) * (10 << 4));
-
 					break;
+
 			}
 
 			if (abs(dx) > (24 << 4) || abs(dy) > (24 << 4)) {
@@ -731,37 +588,26 @@ Serial.println(currentDiveInterval);
 			int16_t diveSpeed = 10 + (wave * 1) + (survivalTimer / 300);
 
 			if (!enemies[i].returning) {
+				// Once we've reached the player area,
+				// commit to an escape run.
+				if (enemies[i].xCoord < (-40 << 4)) {
+					Serial.print("BREAKAWAY ");
+					Serial.print(i);
+					Serial.print(" X=");
+					Serial.print(enemies[i].xCoord >> 4);
+					Serial.print(" Y=");
+					Serial.println(enemies[i].yCoord >> 4);
+
+					enemies[i].returning = true;
+
+					continue;   // <<<<<<<<<< IMPORTANT
+				}
 
 				enemies[i].divePhase += 1;
-				int16_t attackX = player.xCoord;
+				int16_t attackX = player.xCoord + random(-(24 << 4), (24 << 4));
 				int16_t attackY = 48 << 4;   // attack zone near player
 				int16_t dx = attackX - enemies[i].xCoord;
 				int16_t dy = attackY - enemies[i].yCoord;
-
-// Serial.print("DX=");
-// Serial.print(dx);
-// Serial.print(" DY=");
-// Serial.println(dy);
-				
-
-// Once we've reached the player area,
-// commit to an escape run.
-if (enemies[i].yCoord >= (48 << 4)) {
-
-    // Serial.print("ESCAPE ");
-    // Serial.print(i);
-    // Serial.print(" X=");
-    // Serial.print(enemies[i].xCoord >> 4);
-    // Serial.print(" Y=");
-    // Serial.println(enemies[i].yCoord >> 4);
-
-    enemies[i].returning = true;
-
-    continue;   // <<<<<<<<<< IMPORTANT
-}
-
-
-
 				int32_t len = max((int32_t)1, (int32_t)sqrt((float)dx * dx + (float)dy * dy));
 
 				enemies[i].xCoord += (dx * diveSpeed) / len;
@@ -769,28 +615,12 @@ if (enemies[i].yCoord >= (48 << 4)) {
 
 				int16_t oldY = enemies[i].yCoord;
 
-				if (enemies[i].xCoord > (160 << 4)) {
-					enemies[i].diving = false;
-					enemies[i].returning = true;
-				}
-
-				if (enemies[i].xCoord < (-32 << 4)) {
-					enemies[i].diving = false;
-					enemies[i].returning = true;
-				}
-// Serial.print("DIVE ");
-// Serial.print(i);
-// Serial.print(" X=");
-// Serial.print(enemies[i].xCoord >> 4);
-// Serial.print(" Y=");
-// Serial.println(enemies[i].yCoord >> 4);
 
 				if (enemies[i].divePattern == 0) {
-					enemies[i].xCoord +=
-						(int16_t)(sin((float)enemies[i].divePhase * 0.06) * 6.0 * enemies[i].diveDirection);
+					enemies[i].xCoord += (int16_t)(sin((float)enemies[i].divePhase * 0.06) * 6.0 * enemies[i].diveDirection);
 				}
 				else if (enemies[i].divePattern == 1) {
-					enemies[i].xCoord += (int16_t)(cos((float)enemies[i].divePhase * 0.08) * 8.0);
+					enemies[i].xCoord += (int16_t)(cos((float)enemies[i].divePhase * 0.08f) * 8.0f * enemies[i].diveDirection);
 				}
 
 				if (enemies[i].yCoord < (2 << 4)) enemies[i].yCoord = 2 << 4;
@@ -809,67 +639,41 @@ if (enemies[i].yCoord >= (48 << 4)) {
 
 				// Escape phase: fly off the bottom-left
 				if (enemies[i].yCoord >= (48 << 4)) {
-				
+
 					enemies[i].xCoord -= diveSpeed;
 					enemies[i].yCoord += diveSpeed;
 
-// Serial.print("ESCAPING ");
-// Serial.print(i);
-// Serial.print(" X=");
-// Serial.print(enemies[i].xCoord >> 4);
-// Serial.print(" Y=");
-// Serial.println(enemies[i].yCoord >> 4);
-
 					if (enemies[i].yCoord > (96 << 4)) {
 
-					
-// Serial.print("OFFSCREEN ");
-// Serial.println(i);
+						uint8_t side = random(0, 3);
+						enemies[i].spawnSide = side;
 
-uint8_t side = random(0, 3);
+						switch (side) {
 
-enemies[i].spawnSide = side;
+							case 0:  // left
+								enemies[i].xCoord = -24 << 4;
+								enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
+								break;
 
-switch (side) {
+							case 1:  // right
+								enemies[i].xCoord = 144 << 4;
+								enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
+								break;
 
-    case 0:  // left
-        enemies[i].xCoord = -24 << 4;
-        enemies[i].yCoord =
-            ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
-        break;
+							default: // top
+								enemies[i].xCoord = ((enemies[i].homeX >> 4) + random(-20, 21)) << 4;
+								enemies[i].yCoord = -24 << 4;
+								break;
 
-    case 1:  // right
-        enemies[i].xCoord = 144 << 4;
-        enemies[i].yCoord =
-            ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
-        break;
+						}
 
-    default: // top
-        enemies[i].xCoord =
-            ((enemies[i].homeX >> 4) + random(-20, 21)) << 4;
-        enemies[i].yCoord = -24 << 4;
-        break;
-}
-// Serial.print("REENTER ");
-// Serial.print(i);
-// Serial.print(" SIDE=");
-// Serial.println(side);
 
-enemies[i].diving = false;
-enemies[i].returning = false;
-
-enemies[i].arriving = true;
-enemies[i].entryPhase = 0;
-
-enemies[i].divePhase = 0;
-enemies[i].divePattern = 255;
-
-// Serial.print("REFORM ");
-// Serial.print(i);
-// Serial.print(" X=");
-// Serial.print(enemies[i].xCoord >> 4);
-// Serial.print(" Y=");
-// Serial.println(enemies[i].yCoord >> 4);
+						enemies[i].returning = false;
+						enemies[i].arriving = true;
+						enemies[i].entryPhase = 0;
+						enemies[i].diving = false;
+						enemies[i].divePhase = 0;
+						enemies[i].divePattern = 255;
 
 					}
 
@@ -886,132 +690,27 @@ enemies[i].divePattern = 255;
 					enemies[i].yCoord += dy / 8;
 
 					if (abs(dx) < (3 << 4) && abs(dy) < (3 << 4)) {
+
 						enemies[i].xCoord = targetX;
 						enemies[i].yCoord = targetY;
 						enemies[i].diving = false;
 						enemies[i].returning = false;
 						enemies[i].divePhase = 0;
 						enemies[i].divePattern = 255;
-					}
-				}
-			}
-		}
-
-
-		// Player bullet hits an enemy ..
-
-		uint8_t enemySz = (enemies[i].type == 2) ? 7 : 6;
-
-		Rect enemyRect {
-			(int16_t)(enemies[i].xCoord >> 4),
-			(int16_t)(enemies[i].yCoord >> 4),
-			enemySz,
-			enemySz
-		};
-		
-		for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
-
-			Rect bulletRect {
-				(int16_t)(pBullets[b].xCoord >> 4),
-				(int16_t)(pBullets[b].yCoord >> 4),
-				3,
-				1
-			};
-
-			if (pBullets[b].active && arduboy.collide(bulletRect, enemyRect)) {
-
-				pBullets[b].active = false;
-				enemies[i].hp--;
-
-				if (enemies[i].hp == 0) {
-
-					enemies[i].active = false;
-					enemies[i].active = false;
-					spawnParticles(enemies[i].xCoord >> 4, enemies[i].yCoord >> 4, 12);
-					score += (enemies[i].type + 1) * 25 * (enemies[i].diving ? 2 : 1);
-					beep.tone(beep.freq(160), 4);
-				}
-				else {
-					beep.tone(beep.freq(500), 2);
-				}
-				break;
-
-			}
-
-		}
-
-		
-		if (mothership.active) {
-
-
-			// Did the player and the mothership collide ?
-
-			Rect playerRect {
-				(int16_t)(player.xCoord >> 4),
-				(int16_t)(player.yCoord >> 4),
-				7,
-				7
-			};
-
-			Rect mothershipRect {
-				(int16_t)(mothership.xCoord >> 4),
-				(int16_t)(mothership.yCoord >> 4),
-				7,
-				7
-			};
-
-			bool msCollision = arduboy.collide(playerRect, mothershipRect);
-
-			if (msCollision && invulnTimer == 0) {
-
-				mothership.active = false;
-				spawnParticles(mothership.xCoord >> 4, mothership.yCoord >> 4, 20);
-				spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 20);
-
-				player.health -= 50;
-				screenInvertTimer = 10;
-				beep.tone(beep.freq(80), 15);
-				invulnTimer = 80;
-
-			}
-
-
-			// Player bullet hits the mothership ..
-
-			for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
-
-				Rect bulletRect {
-					(int16_t)(pBullets[b].xCoord >> 4),
-					(int16_t)(pBullets[b].yCoord >> 4),
-					3,
-					1
-				};
-
-				if (pBullets[b].active && arduboy.collide(bulletRect, mothershipRect)) {
-
-					pBullets[b].active = false;
-					mothership.hp--;
-
-					if (mothership.hp == 0) {
-
-						mothership.active = false;
-						spawnParticles((mothership.xCoord + formationOffsetX) >> 4, mothership.yCoord >> 4, 8);
-						score += 200;
-						if (mothership.diving) dualShooterTimer = 600;
-						beep.tone(beep.freq(700), 8);
 
 					}
-					else {
-						beep.tone(beep.freq(600), 3);
-					}
-
-					break;
 
 				}
 
 			}
 
 		}
+
+
+		// Player bullet hits an enemy ..
+
+		checkEnemyAndPlayerBulletCollision(i);
+		checkMothershipCollision();
 
 		bool canCollide = enemies[i].diving;
 
@@ -1039,73 +738,10 @@ enemies[i].divePattern = 255;
 
 
 		// Has the player and the enemy collided?
-		
-		Rect playerRect {
-			(int16_t)(player.xCoord >> 4),
-			(int16_t)(player.yCoord >> 4),
-			7,
-			7
-		};
 
-		if (!enemies[i].arriving && invulnTimer == 0 && canCollide && arduboy.collide(enemyRect, playerRect)) {
+		checkEnemyAndPlayerCollision(i);
+		renderEnemy(i);
 
-			enemies[i].active = false;
-			enemies[i].xCoord = -1000;
-			enemies[i].yCoord = -1000;
-
-			enemies[i].arriving = false;
-			enemies[i].diving = false;
-			enemies[i].returning = false;
-			enemies[i].queued = false;
-
-			spawnParticles(enemies[i].xCoord >> 4, enemies[i].yCoord >> 4, 10);
-			spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 8);
-
-			player.health -= 34;
-			screenInvertTimer = 10;
-			beep.tone(beep.freq(80), 10);
-
-			if (player.health <= 0) {
-
-				player.lives--;
-				spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 20);
-				beep.tone(beep.freq(50), 25);
-
-				if (player.lives == 0) {
-					gameState = GameState::GAMEOVER;
-				}
-				else {
-					player.health = 100;
-					player.xCoord = 4 << 4;
-					player.yCoord = 32 << 4;
-					invulnTimer = 90;
-				}
-
-			}
-			else {
-				invulnTimer = 80;
-			}
-
-		}
-
-		if (enemies[i].active) {
-
-			const uint8_t* sprite = Images::beeSprite;
-			if (enemies[i].type == 1) {
-				sprite = Images::butterflySprite;
-			}
-			else if (enemies[i].type == 2) {
-				sprite = Images::bossSprite;
-			}
-
-			int16_t eX = enemies[i].xCoord >> 4;
-			int16_t eY = enemies[i].yCoord >> 4;
-
-			if (eX >= -8 && eX < 128 && eY >= -8 && eY < 64) {
-				Sprites::drawSelfMasked(eX, eY, sprite, 0);
-			}
-
-		}
 
 	}
 
@@ -1117,6 +753,7 @@ enemies[i].divePattern = 255;
 	for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) {
 
 		if (eBullets[i].active) {
+
 			eBullets[i].xCoord += eBullets[i].vx;
 
 			if (eBullets[i].xCoord < 0) {
@@ -1127,38 +764,8 @@ enemies[i].divePattern = 255;
 			else {
 
 				arduboy.drawFastHLine(eBullets[i].xCoord >> 4, eBullets[i].yCoord >> 4, 3, WHITE);
+				checkPlayerAndEnemyBulletCollision(i);
 
-				if (invulnTimer == 0 && eBullets[i].xCoord >= player.xCoord && eBullets[i].xCoord <= player.xCoord + (7 << 4) &&
-					eBullets[i].yCoord >= player.yCoord && eBullets[i].yCoord <= player.yCoord + (7 << 4)) {
-
-					eBullets[i].active = false;
-					spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 8);
-					player.health -= 34;
-					screenInvertTimer = 10;
-					beep.tone(beep.freq(80), 10);
-
-					if (player.health <= 0) {
-
-						player.lives--;
-						spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 20);
-						beep.tone(beep.freq(50), 25);
-
-						if (player.lives == 0) {
-							gameState = GameState::GAMEOVER;
-						}
-						else {
-							player.health = 100;
-							player.xCoord = 4 << 4;
-							player.yCoord = 32 << 4;
-							invulnTimer = 90;
-						}
-
-					}
-					else {
-						invulnTimer = 80;
-					}
-
-				}
 
 			}
 
@@ -1166,38 +773,12 @@ enemies[i].divePattern = 255;
 
 	}
 
-	for (uint8_t i = 0; i < MAX_PARTICLES; i++) {
+	renderParticles();
 
-		if (particles[i].life > 0) {
-			particles[i].xCoord += particles[i].vx;
-			particles[i].yCoord += particles[i].vy;
-			particles[i].life--;
-			arduboy.drawPixel(particles[i].xCoord >> 4, particles[i].yCoord >> 4, WHITE);
-		}
+	renderPlayer();
 
-	}
-
-	if (invulnTimer == 0 || (invulnTimer % 12 < 6)) {
-
-		int16_t pX = player.xCoord >> 4;
-		int16_t pY = player.yCoord >> 4;
-
-		if (pX >= -8 && pX < 128 && pY >= -8 && pY < 64) {
-
-			if (dualShooterTimer > 0) {
-				Sprites::drawSelfMasked(pX, pY - 3, Images::playerSprite, 0);
-				Sprites::drawSelfMasked(pX, pY + 3, Images::playerSprite, 0);
-			}
-			else {
-				Sprites::drawSelfMasked(pX, pY, Images::playerSprite, 0);
-			}
-
-		}
-
-	}
-
-	drawVerticalScore(score);
-	drawLivesAndHealth();
+	renderScore(score);
+	renderLivesAndHealth();
 }
 
 void loop() {
@@ -1233,7 +814,7 @@ void loop() {
 		arduboy.setCursor(44, 25);
 		arduboy.print(F("OVER"));
 		arduboy.setCursor(40, 45);
-		drawVerticalScore(score);
+		renderScore(score);
 		if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
 			resetGame();
 			gameState = GameState::PLAYING;

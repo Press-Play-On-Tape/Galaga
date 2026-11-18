@@ -474,14 +474,17 @@ void updatePlaying() {
 
 	}
 
-	if (formationComplete) {
+	if (formationComplete()) {
 
-		diveTimer++;
-		uint16_t currentDiveInterval = max(25, 130 - (wave * 8) - (survivalTimer / 40));
+		// Ensure they stay in formation for a short breathing period before starting dives
+		if (formationFrame > 120) { // Adjust 120 frames (~2 seconds at 60fps) for longer/shorter wait
+			diveTimer++;
+			uint16_t currentDiveInterval = max(40, 150 - (wave * 8) - (survivalTimer / 40));
 
-		if (diveTimer >= currentDiveInterval) {
-			diveTimer = 0;
-			triggerRandomDives();
+			if (diveTimer >= currentDiveInterval) {
+				diveTimer = 0;
+				triggerRandomDives();
+			}
 		}
 
 	}
@@ -561,149 +564,68 @@ void updatePlaying() {
 			enemies[i].yCoord = targetY;
 
 		}
-		else {
+else {
 
 			int16_t diveSpeed = 10 + (wave * 1) + (survivalTimer / 300);
 
-			if (!enemies[i].returning) {
+			// Check if the enemy has gone completely off the bottom/screen edge to reform at the top
+			if (enemies[i].xCoord < (-8 << 4) || enemies[i].yCoord < (-30 << 4) || enemies[i].yCoord > (90 << 4)) {
 
-				// Since xCoord is the forward dive axis (moving from right ~110 down to left ~0 and off-screen < -16),
-				// check if the enemy has gone off the bottom/screen edge.
-				if (enemies[i].xCoord < (-16 << 4) || enemies[i].yCoord < (-20 << 4) || enemies[i].yCoord > (80 << 4)) {
+				Side side = static_cast<Side>(random(0, 3));
+				enemies[i].spawnSide = side;
 
-					Side side = static_cast<Side>(random(0, 3));
-					enemies[i].spawnSide = side;
-
-					switch (side) {
-						case Side::Left:  
-							enemies[i].xCoord = -24 << 4;
-							enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
-							break;
-						case Side::Right:  
-							enemies[i].xCoord = 144 << 4;
-							enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
-							break;
-						default: // top re-entry
-							enemies[i].xCoord = ((enemies[i].homeX >> 4) + random(-20, 21)) << 4;
-							enemies[i].yCoord = -24 << 4;
-							break;
-					}
-
-					enemies[i].diving = false;
-					enemies[i].returning = false;
-					enemies[i].queued = false;
-					enemies[i].arriving = true;
-					enemies[i].entryPhase = 0;
-					enemies[i].divePhase = 0;
-					enemies[i].divePattern = 255;
-
-					continue;
+				switch (side) {
+					case Side::Left:  
+						enemies[i].xCoord = -24 << 4;
+						enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
+						break;
+					case Side::Right:  
+						enemies[i].xCoord = 144 << 4;
+						enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
+						break;
+					default: // top re-entry
+						enemies[i].xCoord = ((enemies[i].homeX >> 4) + random(-20, 21)) << 4;
+						enemies[i].yCoord = -24 << 4;
+						break;
 				}
 
-				// Target past the player along xCoord so they dive all the way off screen, 
-				// and track the player's lateral position on yCoord.
-				int16_t attackTargetX = -10 << 4; // Dive all the way past the player and off-screen
-				int16_t attackTargetY = player.yCoord; // Track player's lateral position
-				
-				int16_t dx = attackTargetX - enemies[i].xCoord;
-				int16_t dy = attackTargetY - enemies[i].yCoord;
-				
-				int32_t len = max((int32_t)1, (int32_t)sqrt((float)dx * dx + (float)dy * dy));
+				enemies[i].active = true;
+				enemies[i].diving = false;
+				enemies[i].returning = false;
+				enemies[i].queued = false;
+				enemies[i].arriving = true;
+				enemies[i].entryPhase = 0;
+				enemies[i].divePhase = 0;
+				enemies[i].divePattern = 255;
 
-				enemies[i].divePhase += 1;
-
-				// Apply dive movement along both axes correctly aligned with the rotated screen layout
-				enemies[i].xCoord += (dx * diveSpeed) / len;
-				enemies[i].yCoord += (dy * diveSpeed) / len;
-
-				// Optional subtle lateral weave
-				if (enemies[i].divePattern == 0) {
-					enemies[i].yCoord += (int16_t)(sin((float)enemies[i].divePhase * 0.06) * 1.5 * enemies[i].diveDirection);
-				}
-				else if (enemies[i].divePattern == 1) {
-					enemies[i].yCoord += (int16_t)(cos((float)enemies[i].divePhase * 0.08f) * 2.0f * enemies[i].diveDirection);
-				}
-
-				// Firing check during dive
-				uint8_t firingThreshold = wave + (survivalTimer / 600);
-				int16_t dxPlayer = abs((player.xCoord >> 4) - (enemies[i].xCoord >> 4));
-
-				if (dxPlayer < 40) {
-					if (random(0, 150) < firingThreshold) {
-						fireEnemyBullet(enemies[i].xCoord, enemies[i].yCoord);
-					}
-				}
-
+				continue;
 			}
-			else {
 
-				// Escape phase: fly off the bottom-left
-				if (enemies[i].yCoord >= (48 << 4)) {
+			// Force forward dive momentum along xCoord to always move toward the exit (decreasing xCoord)
+			enemies[i].divePhase += 1;
+			enemies[i].xCoord -= diveSpeed; // Strictly enforce forward dive movement off the screen edge
 
-					enemies[i].xCoord -= diveSpeed;
-					enemies[i].yCoord += diveSpeed;
+			// Track the player's lateral position smoothly on yCoord
+			int16_t dy = player.yCoord - enemies[i].yCoord;
+			if (dy > 0) enemies[i].yCoord += min((int16_t)4, dy / 4);
+			else if (dy < 0) enemies[i].yCoord -= min((int16_t)4, -dy / 4);
 
-					if (enemies[i].yCoord > (96 << 4)) {
+			// Optional subtle lateral weave
+			if (enemies[i].divePattern == 0) {
+				enemies[i].yCoord += (int16_t)(sin((float)enemies[i].divePhase * 0.06) * 1.5 * enemies[i].diveDirection);
+			}
+			else if (enemies[i].divePattern == 1) {
+				enemies[i].yCoord += (int16_t)(cos((float)enemies[i].divePhase * 0.08f) * 2.0f * enemies[i].diveDirection);
+			}
 
-						Side side = static_cast<Side>(random(0, 3));
-						enemies[i].spawnSide = side;
+			// Firing check during dive
+			uint8_t firingThreshold = wave + (survivalTimer / 600);
+			int16_t dxPlayer = abs((player.xCoord >> 4) - (enemies[i].xCoord >> 4));
 
-						switch (side) {
-
-							case Side::Left:  
-
-								enemies[i].xCoord = -24 << 4;
-								enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
-								break;
-
-							case Side::Right:  
-
-								enemies[i].xCoord = 144 << 4;
-								enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
-								break;
-
-							default: // top
-
-								enemies[i].xCoord = ((enemies[i].homeX >> 4) + random(-20, 21)) << 4;
-								enemies[i].yCoord = -24 << 4;
-								break;
-
-						}
-
-						enemies[i].returning = false;
-						enemies[i].arriving = true;
-						enemies[i].entryPhase = 0;
-						enemies[i].diving = false;
-						enemies[i].divePhase = 0;
-						enemies[i].divePattern = 255;
-
-					}
-
+			if (dxPlayer < 40) {
+				if (random(0, 150) < firingThreshold) {
+					fireEnemyBullet(enemies[i].xCoord, enemies[i].yCoord);
 				}
-				else {
-
-					int16_t targetX = enemies[i].homeX + formationOffsetX;
-					int16_t targetY = enemies[i].homeY;
-
-					int16_t dx = targetX - enemies[i].xCoord;
-					int16_t dy = targetY - enemies[i].yCoord;
-
-					enemies[i].xCoord += dx / 8;
-					enemies[i].yCoord += dy / 8;
-
-					if (abs(dx) < (3 << 4) && abs(dy) < (3 << 4)) {
-
-						enemies[i].xCoord = targetX;
-						enemies[i].yCoord = targetY;
-						enemies[i].diving = false;
-						enemies[i].returning = false;
-						enemies[i].divePhase = 0;
-						enemies[i].divePattern = 255;
-
-					}
-
-				}
-
 			}
 
 		}
@@ -747,7 +669,7 @@ void updatePlaying() {
 
 	}
 
-	if (activeEnemies == 0 && !mothership.active) {
+	if (activeEnemies == 0) {
 		wave++;
 		initWave();
 	}
@@ -776,11 +698,27 @@ void updatePlaying() {
 	}
 
 	renderParticles();
-
 	renderPlayer();
-
 	renderScore(score);
 	renderLivesAndHealth();
+
+
+	// Check if all enemies in the wave are completely inactive (dead) ..
+	
+	bool allEnemiesDead = true;
+
+	for (uint8_t i = 0; i < MAX_ENEMIES; i++) {
+		if (enemies[i].active) {
+			allEnemiesDead = false;
+			break;
+		}
+	}
+
+	if (allEnemiesDead) {
+		wave++;
+		initWave();
+	}
+
 }
 
 void loop() {

@@ -60,7 +60,7 @@ void renderParticles() {
 			particles[i].xCoord += particles[i].vx;
 			particles[i].yCoord += particles[i].vy;
 			particles[i].life--;
-			arduboy.drawPixel(particles[i].xCoord >> 4, particles[i].yCoord >> 4, WHITE);
+			Sprites::drawExternalMask((particles[i].xCoord >> 4) - 1, (particles[i].yCoord >> 4) - 1, Images::Pixel, Images::Pixel_Mask, 0, 0);
 		}
 
 	}
@@ -76,14 +76,14 @@ void renderPlayer() {
 		int16_t pX = player.xCoord >> 4;
 		int16_t pY = player.yCoord >> 4;
 
-		if (pX >= -8 && pX < 128 && pY >= -8 && pY < 64) {
+		if (player.health > 0 && pX >= -8 && pX < 128 && pY >= -8 && pY < 64) {
 
 			if (dualShooterTimer > 0) {
-				Sprites::drawSelfMasked(pX, pY - 3, Images::playerSprite, 0);
-				Sprites::drawSelfMasked(pX, pY + 3, Images::playerSprite, 0);
+				Sprites::drawSelfMasked(pX, pY - 3, Images::Player, 0);
+				Sprites::drawSelfMasked(pX, pY + 3, Images::Player, 0);
 			}
 			else {
-				Sprites::drawSelfMasked(pX, pY, Images::playerSprite, 0);
+				Sprites::drawSelfMasked(pX, pY, Images::Player, 0);
 			}
 
 		}
@@ -92,29 +92,70 @@ void renderPlayer() {
 
 }
 
-void renderEnemy(uint8_t enemyIdx) {
+void renderEnemy_Static(uint8_t enemyIdx) {
 
-	if (enemies[enemyIdx].active) {
+	if (enemies[enemyIdx].active && !enemies[enemyIdx].arriving && !enemies[enemyIdx].diving && !enemies[enemyIdx].returning && !enemies[enemyIdx].queued) {
 
-		const uint8_t* sprite = Images::beeSprite;
+		const uint8_t* sprite = Images::Bee;
+		const uint8_t* mask = Images::Bee_Mask;
 		
 		if (enemies[enemyIdx].type == EnemyType::Butterfly) {
-			sprite = Images::butterflySprite;
+			sprite = Images::Butterfly;
+			mask = Images::Butterfly_Mask;
 		}
 
 		else if (enemies[enemyIdx].type == EnemyType::Boss) {
-			sprite = Images::bossSprite;
+			sprite = Images::Boss;
+			mask = Images::Boss_Mask;
 		}
 
 		int16_t eX = enemies[enemyIdx].xCoord >> 4;
 		int16_t eY = enemies[enemyIdx].yCoord >> 4;
 
 		if (eX >= -8 && eX < 128 && eY >= -8 && eY < 64) {
-			Sprites::drawSelfMasked(eX, eY, sprite, 0);
+			Sprites::drawExternalMask(eX - 1, eY - 1, sprite, mask, 0, 0);
 		}
 
 	}
 	
+}
+
+
+
+void renderEnemy_Diving(uint8_t enemyIdx) {
+
+	if (enemies[enemyIdx].active && (enemies[enemyIdx].arriving || enemies[enemyIdx].diving || enemies[enemyIdx].returning || enemies[enemyIdx].queued)) {
+
+		const uint8_t* sprite = Images::Bee;
+		const uint8_t* mask = Images::Bee_Mask;
+		
+		if (enemies[enemyIdx].type == EnemyType::Butterfly) {
+			sprite = Images::Butterfly;
+			mask = Images::Butterfly_Mask;
+		}
+
+		else if (enemies[enemyIdx].type == EnemyType::Boss) {
+			sprite = Images::Boss;
+			mask = Images::Boss_Mask;
+		}
+
+		int16_t eX = enemies[enemyIdx].xCoord >> 4;
+		int16_t eY = enemies[enemyIdx].yCoord >> 4;
+
+		if (eX >= -8 && eX < 128 && eY >= -8 && eY < 64) {
+			Sprites::drawExternalMask(eX - 1, eY - 1, sprite, mask, 0, 0);
+		}
+
+	}
+	
+}
+
+void renderMothership(int8_t x, int8_t y) {
+
+	if (mothership.active) {
+		Sprites::drawExternalMask(x - 1, y - 1, Images::Mothership, Images::Mothership_Mask, 0, 0);
+	}
+
 }
 
 void renderHealthPack() {
@@ -124,7 +165,7 @@ void renderHealthPack() {
 	
 	if (healthPack.active) {
 
-		Sprites::drawSelfMasked(hpX, hpY, Images::healthPackSprite, 0);
+		Sprites::drawExternalMask(hpX - 1, hpY - 1, Images::HealthPack, Images::HealthPack_Mask, 0, 0);
 
 	}
 	

@@ -13,7 +13,7 @@ void spawnParticles(int16_t x, int16_t y, uint8_t count) {
 			particles[i].yCoord = y << 4;
 			particles[i].vx = (int16_t)(random(0, 24) - 12);
 			particles[i].vy = (int16_t)(random(0, 24) - 12);
-			particles[i].life = random(8, 16);
+			particles[i].life = random(12, 20);
 			count--;
 		}
 
@@ -60,7 +60,7 @@ void checkEnemyAndPlayerCollision(uint8_t enemyIdx) {
 		7
 	};
 
-	if (!enemies[enemyIdx].arriving && invulnTimer == 0 && canCollide && arduboy.collide(enemyRect, playerRect)) {
+	if (!enemies[enemyIdx].arriving && canCollide && arduboy.collide(enemyRect, playerRect)) {
 
 		enemies[enemyIdx].active = false;
 		enemies[enemyIdx].xCoord = -1000;
@@ -70,33 +70,41 @@ void checkEnemyAndPlayerCollision(uint8_t enemyIdx) {
 		enemies[enemyIdx].diving = false;
 		enemies[enemyIdx].returning = false;
 		enemies[enemyIdx].queued = false;
-
+		
 		spawnParticles(enemies[enemyIdx].xCoord >> 4, enemies[enemyIdx].yCoord >> 4, 10);
-		spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 8);
 
-		player.health -= 34;
-		screenInvertTimer = 10;
-		beep.tone(beep.freq(80), 10);
+		if (player.shieldActive)  return;
 
-		if (player.health <= 0) {
+		if (invulnTimer == 0) {
 
-			player.lives--;
-			spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 20);
-			beep.tone(beep.freq(50), 25);
+			spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 8);
+			player.health -= 34;
+			screenInvertTimer = 6;
+			beep.tone(beep.freq(80), 10);
 
-			if (player.lives == 0) {
-				gameState = GameState::GameOver;
+			if (player.health <= 0) {
+
+				player.lives--;
+				beep.tone(beep.freq(50), 25);
+
+				if (player.lives == 0) {
+
+					gameOverDelayTimer = 60; 
+					player.health = 0;
+
+				}
+				else {
+					player.health = 100;
+					player.xCoord = 4 << 4;
+					player.yCoord = 32 << 4;
+					invulnTimer = 90;
+				}
+
 			}
 			else {
-				player.health = 100;
-				player.xCoord = 4 << 4;
-				player.yCoord = 32 << 4;
-				invulnTimer = 90;
+				invulnTimer = 80;
 			}
 
-		}
-		else {
-			invulnTimer = 80;
 		}
 
 	}
@@ -123,18 +131,44 @@ void checkMothershipCollision() {
 			7
 		};
 
-		bool msCollision = arduboy.collide(playerRect, mothershipRect);
-
-		if (msCollision && invulnTimer == 0) {
+		if (arduboy.collide(playerRect, mothershipRect)) {
 
 			mothership.active = false;
 			spawnParticles(mothership.xCoord >> 4, mothership.yCoord >> 4, 20);
-			spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 20);
 
-			player.health -= 50;
-			screenInvertTimer = 10;
-			beep.tone(beep.freq(80), 15);
-			invulnTimer = 80;
+			if (player.shieldActive)  return;
+
+			if (invulnTimer == 0) {
+
+				spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 20);
+				player.health -= 50;
+				screenInvertTimer = 6;
+				beep.tone(beep.freq(80), 15);
+
+				if (player.health <= 0) {
+
+					player.lives--;
+					beep.tone(beep.freq(50), 25);
+
+					if (player.lives == 0) {
+
+						gameOverDelayTimer = 60; 
+						player.health = 0;
+
+					}
+					else {
+						player.health = 100;
+						player.xCoord = 4 << 4;
+						player.yCoord = 32 << 4;
+						invulnTimer = 90;
+					}
+
+				}
+				else {
+					invulnTimer = 80;
+				}
+
+			}
 
 		}
 
@@ -154,11 +188,11 @@ void checkMothershipCollision() {
 
 				pBullets[b].active = false;
 				mothership.hp--;
+				spawnParticles((mothership.xCoord + formationOffsetX) >> 4, mothership.yCoord >> 4, 8);
 
 				if (mothership.hp == 0) {
 
 					mothership.active = false;
-					spawnParticles((mothership.xCoord + formationOffsetX) >> 4, mothership.yCoord >> 4, 8);
 					score += 200;
 					if (mothership.diving) dualShooterTimer = 600;
 					beep.tone(beep.freq(700), 8);
@@ -203,7 +237,8 @@ void checkHealthPackCollision() {
 			1
 		};
 
-		if (pBullets[b].active &&					arduboy.collide(bulletRect, healthPackRect)) {
+		if (pBullets[b].active && arduboy.collide(bulletRect, healthPackRect)) {
+
 			pBullets[b].active = false;
 			healthPack.active = false;
 			int16_t healAmount = random(25, 51);
@@ -264,12 +299,12 @@ void checkEnemyAndPlayerBulletCollision(uint8_t enemyIdx) {
 
 			pBullets[b].active = false;
 			enemies[enemyIdx].hp--;
+			spawnParticles(enemies[enemyIdx].xCoord >> 4, enemies[enemyIdx].yCoord >> 4, 12);
 
 			if (enemies[enemyIdx].hp == 0) {
 
 				enemies[enemyIdx].active = false;
 				enemies[enemyIdx].active = false;
-				spawnParticles(enemies[enemyIdx].xCoord >> 4, enemies[enemyIdx].yCoord >> 4, 12);
 				score += (static_cast<uint8_t>(enemies[enemyIdx].type) + 1) * 25 * (enemies[enemyIdx].diving ? 2 : 1);
 				beep.tone(beep.freq(160), 4);
 
@@ -303,33 +338,43 @@ void checkPlayerAndEnemyBulletCollision(uint8_t bulletIdx) {
 		1
 	};
 
-	if (invulnTimer == 0 && arduboy.collide(bulletRect, playerRect)) {
+	if (arduboy.collide(bulletRect, playerRect)) {
 
 		eBullets[bulletIdx].active = false;
-		spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 8);
-		player.health -= 34;
-		screenInvertTimer = 10;
-		beep.tone(beep.freq(80), 10);
 
-		if (player.health <= 0) {
+		if (player.shieldActive)  return;
 
-			player.lives--;
-			spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 20);
-			beep.tone(beep.freq(50), 25);
+		if (invulnTimer == 0) {
 
-			if (player.lives == 0) {
-				gameState = GameState::GameOver;
+			spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 8);
+
+			player.health -= 34;
+			screenInvertTimer = 6;
+			beep.tone(beep.freq(80), 10);
+
+			if (player.health <= 0) {
+
+				player.lives--;
+				beep.tone(beep.freq(50), 25);
+
+				if (player.lives == 0) {
+
+					gameOverDelayTimer = 60;
+					player.health = 0;
+
+				}
+				else {
+					player.health = 100;
+					player.xCoord = 4 << 4;
+					player.yCoord = 32 << 4;
+					invulnTimer = 90;
+				}
+
 			}
 			else {
-				player.health = 100;
-				player.xCoord = 4 << 4;
-				player.yCoord = 32 << 4;
-				invulnTimer = 90;
+				invulnTimer = 80;
 			}
 
-		}
-		else {
-			invulnTimer = 80;
 		}
 
 	}

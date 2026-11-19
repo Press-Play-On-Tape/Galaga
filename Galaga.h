@@ -49,6 +49,10 @@ uint16_t healthPackSpawnTimer = 0;
 uint8_t arrivalReleaseTimer = 0;
 uint16_t replenishTimer = 0;
 uint16_t formationFrame = 0;
+uint8_t gameOverDelayTimer = 0;
+
+
+// Near your other game state variables in Galaga.h
 
 
 #include "Galaga_Render.h"
@@ -149,11 +153,10 @@ void initWave() {
 	}
 }
 
-
-
 void resetGame() {
 
 	player.reset();
+	gameOverDelayTimer = 0;
 	score = 0;
 	wave = 1;
 	formationOffsetX = 0;
@@ -167,7 +170,6 @@ void resetGame() {
 
 }
 
-// uint8_t pattern = random(0, 3); //SJH standard weave, the wide swing, and the new looping corkscrew pattern.
 void triggerRandomDives() {
 
 	// Count how many enemies are currently diving right now ?
@@ -229,7 +231,8 @@ void triggerRandomDives() {
 	}
 
 	uint8_t squadSize = random(1, maxSquad + 1);
-	uint8_t pattern = random(0, 3);
+	DivePattern pattern = static_cast<DivePattern>(random(0, static_cast<uint8_t>(DivePattern::Count)));
+	// pattern = DivePattern::ZigZag;
 
 	for (uint8_t s = 0; s < squadSize; s++) {
 
@@ -281,13 +284,16 @@ void triggerRandomDives() {
 			Serial.print(" HX=");
 			Serial.print(enemies[target].homeX >> 4);
 			Serial.print(" HY=");
-			Serial.println(enemies[target].homeY >> 4);
+			Serial.print(enemies[target].homeY >> 4);
+			Serial.print(" DP=");
+			Serial.println((uint8_t)pattern);
 
 			enemies[target].xCoord = enemies[target].homeX + formationOffsetX;
 			enemies[target].yCoord = enemies[target].homeY + formationOffsetY;
 			enemies[target].diving = true;
 			enemies[target].returning = false;
 			enemies[target].divePhase = 0;
+			enemies[target].diveIdx = 0;
 			enemies[target].divePattern = pattern;
 			enemies[target].diveDirection = (random(0, 2) == 0) ? 1 : -1;
 
@@ -327,9 +333,13 @@ void setup() {
 
 void updatePlaying() {
 
+	
+	// Housekeeping ..
+
 	if (invulnTimer > 0) invulnTimer--;
 	if (screenInvertTimer > 0) screenInvertTimer--;
 	if (dualShooterTimer > 0) dualShooterTimer--;
+	
 	survivalTimer++;
 
 	if (screenInvertTimer > 0) {
@@ -339,7 +349,9 @@ void updatePlaying() {
 		arduboy.invert(false);
 	}
 
-	// Player Controls
+
+	// Player Controls ..
+
 	if (arduboy.pressed(UP_BUTTON)) player.vY -= 6;
 	if (arduboy.pressed(DOWN_BUTTON)) player.vY += 6;
 
@@ -370,15 +382,56 @@ void updatePlaying() {
 		player.vX = 0;
 	}
 
-	if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
+	// A fires, B toggles the round shield ..
+	
+	if (arduboy.justPressed(A_BUTTON)) {
 		firePlayerBullet();
 	}
 
+	if (arduboy.pressed(B_BUTTON)) {
 
-	// Update and render Bullets ..
+		// Only allow activating if player has health to spend ..
+
+		if (!player.shieldActive && player.health > 5) {
+
+			player.shieldActive = true;
+			player.shieldDrainTimer = 0;
+			beep.tone(beep.freq(600), 4);
+
+		}
+
+	}
+	else {
+
+		player.shieldActive = false;
+
+	}
+
+	// Slowly drain health while shield is active (e.g., 1 health every 20 frames at 60fps = 3/sec)
+	if (player.shieldActive) {
+
+		player.shieldDrainTimer++;
+
+		if (player.shieldDrainTimer >= 20) {
+
+			player.shieldDrainTimer = 0;
+
+			if (player.health > 0) {
+				player.health--;
+			}
+
+			if (player.health == 5) {
+				player.shieldActive = false;
+			}
+
+		}
+
+	}
+
+
+	// Update Bullets ..
 
 	updateBullets();
-	renderBullets();
 
 
 	// Handle health packs ..
@@ -403,9 +456,6 @@ void updatePlaying() {
 	}
 	
 	if (healthPack.active) 	checkHealthPackCollision();
-	renderHealthPack();
-
-
 
 
 	arrivalReleaseTimer++;
@@ -523,13 +573,6 @@ void updatePlaying() {
 
 		}
 
-		int16_t msX = (mothership.xCoord + formationOffsetX) >> 4;
-		int16_t msY = mothership.yCoord >> 4;
-
-		if (msX >= -8 && msX < 128 && msY >= -8 && msY < 64) {
-			Sprites::drawSelfMasked(msX, msY, Images::mothershipSprite, 0);
-		}
-
 	}
 
 	if (formationComplete()) {
@@ -622,7 +665,8 @@ void updatePlaying() {
 			enemies[i].yCoord = targetY;
 
 		}
-else {
+		else {
+
 
 			int16_t diveSpeed = 10 + (wave * 1) + (survivalTimer / 300);
 
@@ -633,18 +677,24 @@ else {
 				enemies[i].spawnSide = side;
 
 				switch (side) {
+
 					case Side::Left:  
+
 						enemies[i].xCoord = -24 << 4;
 						enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
 						break;
+
 					case Side::Right:  
+
 						enemies[i].xCoord = 144 << 4;
 						enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
 						break;
+
 					default: // top re-entry
 						enemies[i].xCoord = ((enemies[i].homeX >> 4) + random(-20, 21)) << 4;
 						enemies[i].yCoord = -24 << 4;
 						break;
+
 				}
 
 				enemies[i].active = true;
@@ -654,33 +704,71 @@ else {
 				enemies[i].arriving = true;
 				enemies[i].entryPhase = 0;
 				enemies[i].divePhase = 0;
-				enemies[i].divePattern = 255;
+				enemies[i].divePattern = DivePattern::None;
 
 				continue;
 			}
 
 			// Force forward dive momentum along xCoord to always move toward the exit (decreasing xCoord)
 			enemies[i].divePhase += 1;
-			enemies[i].xCoord -= diveSpeed; 
 
-			// Track the player's lateral position smoothly on yCoord
-			int16_t dy = player.yCoord - enemies[i].yCoord;
-			if (dy > 0) enemies[i].yCoord += min((int16_t)4, dy / 4);
-			else if (dy < 0) enemies[i].yCoord -= min((int16_t)4, -dy / 4);
+			if (enemies[i].divePattern != DivePattern::LoopTheLoop && enemies[i].divePattern != DivePattern::ZigZag) {
+
+				enemies[i].xCoord -= diveSpeed; 
+				int16_t dy = player.yCoord - enemies[i].yCoord;
+				if (dy > 0) enemies[i].yCoord += min((int16_t)4, dy / 4);
+				else if (dy < 0) enemies[i].yCoord -= min((int16_t)4, -dy / 4);
+			}
+
+
 
 			// Different dive patterns based on divePattern value
-			if (enemies[i].divePattern == 0) {
-				// Gentle sine wave weave
-				enemies[i].yCoord += (int16_t)(sin((float)enemies[i].divePhase * 0.06) * 1.5 * enemies[i].diveDirection);
-			}
-			else if (enemies[i].divePattern == 1) {
-				// Wider cosine swing
-				enemies[i].yCoord += (int16_t)(cos((float)enemies[i].divePhase * 0.08f) * 2.0f * enemies[i].diveDirection);
-			}
-			else if (enemies[i].divePattern >= 2) {
-				// Looping pattern: combines both sine and cosine with different frequencies to trace a loop/corkscrew
-				enemies[i].xCoord += (int16_t)(cos((float)enemies[i].divePhase * 0.12f) * 2.0f); // slight forward/back loop kick
-				enemies[i].yCoord += (int16_t)(sin((float)enemies[i].divePhase * 0.12f) * 4.5f * enemies[i].diveDirection);
+
+			switch (enemies[i].divePattern) {
+
+				case DivePattern::GentleSine:
+					enemies[i].yCoord += (int16_t)(sin((float)enemies[i].divePhase * 0.06) * 1.5 * enemies[i].diveDirection);
+					break;
+
+				case DivePattern::WiderCosine:
+					enemies[i].yCoord += (int16_t)(cos((float)enemies[i].divePhase * 0.08f) * 2.0f * enemies[i].diveDirection);
+					break;
+
+				case DivePattern::BasicLoop:
+					// Looping pattern: combines both sine and cosine with different frequencies to trace a loop/corkscrew
+					enemies[i].xCoord += (int16_t)(cos((float)enemies[i].divePhase * 0.12f) * 2.0f); // slight forward/back loop kick
+					enemies[i].yCoord += (int16_t)(sin((float)enemies[i].divePhase * 0.12f) * 4.5f * enemies[i].diveDirection);
+					break;
+
+				case DivePattern::LoopTheLoop:
+
+					if (enemies[i].diveIdx < 125 && arduboy.isFrameCount(2)) {
+
+						int8_t xInc = pgm_read_byte(&loop_x[enemies[i].diveIdx]) * enemies[i].diveDirection;
+						int8_t yInc = pgm_read_byte(&loop_y[enemies[i].diveIdx]);// * enemies[i].diveDirection;
+
+						enemies[i].xCoord += yInc << 4;
+						enemies[i].yCoord += xInc << 4;
+						enemies[i].diveIdx++;
+
+					}
+
+					break;
+
+				case DivePattern::ZigZag:
+
+					if (enemies[i].diveIdx < 125 && arduboy.isFrameCount(2)) {
+
+						int8_t xInc = pgm_read_byte(&zigzag_x[enemies[i].diveIdx]) * enemies[i].diveDirection;
+						int8_t yInc = pgm_read_byte(&zigzag_y[enemies[i].diveIdx]);// * enemies[i].diveDirection;
+
+						enemies[i].xCoord += yInc << 4;
+						enemies[i].yCoord += xInc << 4;
+						enemies[i].diveIdx++;
+
+					}
+
+					break;
 			}
 
 			// Firing check during dive
@@ -728,7 +816,7 @@ else {
 		// Has the player and the enemy collided?
 
 		checkEnemyAndPlayerCollision(i);
-		renderEnemy(i);
+		renderEnemy_Static(i);
 
 
 	}
@@ -761,11 +849,38 @@ else {
 
 	}
 
+
+	// Render elements of screen ..
+
 	renderParticles();
-	renderPlayer();
 	renderScore(score);
 	renderLivesAndHealth();
+	renderBullets();
 
+	renderHealthPack();
+
+
+	for (uint8_t i = 0; i < MAX_ENEMIES; i++) {
+		renderEnemy_Diving(i);
+	}
+
+	{
+		int16_t msX = (mothership.xCoord + formationOffsetX) >> 4;
+		int16_t msY = mothership.yCoord >> 4;
+
+		if (msX >= -8 && msX < 128 && msY >= -8 && msY < 64) {
+			renderMothership(msX, msY);
+		}
+
+	}
+
+	renderPlayer();
+
+	if (player.shieldActive) {
+		int16_t px = (player.xCoord >> 4);
+		int16_t py = (player.yCoord >> 4);
+		Sprites::drawSelfMasked(px - 4, py - 4, Images::Shield, arduboy.getFrameCount(24) / 3);
+	}
 
 	// Check if all enemies in the wave are completely inactive (dead) ..
 	
@@ -781,6 +896,17 @@ else {
 	if (allEnemiesDead) {
 		wave++;
 		initWave();
+	}
+
+	if (gameOverDelayTimer > 0) {
+
+		gameOverDelayTimer--;
+
+		if (gameOverDelayTimer == 0) {
+			arduboy.invert(false);
+			gameState = GameState::GameOver;
+		}
+
 	}
 
 }
@@ -815,13 +941,11 @@ void loop() {
 
 			updateStars();
 			arduboy.invert(false);
-			arduboy.setCursor(44, 25);
-			arduboy.print(F("OVER"));
-			arduboy.setCursor(40, 45);
 			renderScore(score);
+			Sprites::drawExternalMask(47, 0, Images::GameOver, Images::GameOver_Mask, 0, 0);
 			if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
 				resetGame();
-				gameState = GameState::Playing;
+				gameState = GameState::Title_Init;
 			}
 
 			break;

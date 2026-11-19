@@ -10,7 +10,8 @@ struct Enemy {
 	uint8_t hp;
 	int16_t entryPhase;
 	int16_t divePhase;
-	uint8_t divePattern;
+	DivePattern divePattern;
+	uint8_t diveIdx;
 	int8_t diveDirection;
 	Side spawnSide;
 	

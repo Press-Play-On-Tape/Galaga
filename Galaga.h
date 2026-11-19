@@ -167,9 +167,67 @@ void resetGame() {
 
 }
 
+// uint8_t pattern = random(0, 3); //SJH standard weave, the wide swing, and the new looping corkscrew pattern.
 void triggerRandomDives() {
 
-	uint8_t maxSquad = min(5, 1 + (wave / 2) + (survivalTimer / 800));
+	// Count how many enemies are currently diving right now ?
+
+	uint8_t currentDivers = 0;
+
+	for (uint8_t i = 0; i < MAX_ENEMIES; i++) {
+
+		if (enemies[i].active && enemies[i].diving) {
+			currentDivers++;
+		}
+
+	}
+
+	// 2. Determine max squad/diver cap based on score brackets
+	uint8_t scoreCap = 4; // Default fallback for 3001+
+
+	switch (score) {
+	
+		case 0 ... 1000:
+			scoreCap = 1;
+			break;
+
+		case 1001 ... 2000:
+			scoreCap = 2;
+			break;
+
+		case 2001 ... 3000:
+			scoreCap = 3;
+			break;
+
+		default:
+			scoreCap = 4;
+			break;
+
+	}
+
+
+	// If we have already reached or exceeded the cap for our score bracket, don't trigger new dives ..
+	
+	if (score <= 3000 && currentDivers >= scoreCap) {
+
+		diveTimer = 0;
+		return;
+
+	}
+
+	// Calculate how many new divers we can launch without breaking the cap ..
+	
+	uint8_t maxSquad = min(4, 1 + (wave / 2) + (survivalTimer / 800));
+
+	if (score <= 3000) {
+		maxSquad = min(maxSquad, (uint8_t)(scoreCap - currentDivers));
+	}
+	
+	if (maxSquad == 0) {
+		diveTimer = 0;
+		return;
+	}
+
 	uint8_t squadSize = random(1, maxSquad + 1);
 	uint8_t pattern = random(0, 3);
 
@@ -603,19 +661,26 @@ else {
 
 			// Force forward dive momentum along xCoord to always move toward the exit (decreasing xCoord)
 			enemies[i].divePhase += 1;
-			enemies[i].xCoord -= diveSpeed; // Strictly enforce forward dive movement off the screen edge
+			enemies[i].xCoord -= diveSpeed; 
 
 			// Track the player's lateral position smoothly on yCoord
 			int16_t dy = player.yCoord - enemies[i].yCoord;
 			if (dy > 0) enemies[i].yCoord += min((int16_t)4, dy / 4);
 			else if (dy < 0) enemies[i].yCoord -= min((int16_t)4, -dy / 4);
 
-			// Optional subtle lateral weave
+			// Different dive patterns based on divePattern value
 			if (enemies[i].divePattern == 0) {
+				// Gentle sine wave weave
 				enemies[i].yCoord += (int16_t)(sin((float)enemies[i].divePhase * 0.06) * 1.5 * enemies[i].diveDirection);
 			}
 			else if (enemies[i].divePattern == 1) {
+				// Wider cosine swing
 				enemies[i].yCoord += (int16_t)(cos((float)enemies[i].divePhase * 0.08f) * 2.0f * enemies[i].diveDirection);
+			}
+			else if (enemies[i].divePattern >= 2) {
+				// Looping pattern: combines both sine and cosine with different frequencies to trace a loop/corkscrew
+				enemies[i].xCoord += (int16_t)(cos((float)enemies[i].divePhase * 0.12f) * 2.0f); // slight forward/back loop kick
+				enemies[i].yCoord += (int16_t)(sin((float)enemies[i].divePhase * 0.12f) * 4.5f * enemies[i].diveDirection);
 			}
 
 			// Firing check during dive
@@ -629,7 +694,6 @@ else {
 			}
 
 		}
-
 
 		// Player bullet hits an enemy ..
 

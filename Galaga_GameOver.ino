@@ -1,0 +1,148 @@
+#pragma once
+
+#include <Sprites.h>
+
+void resetGameOverDiver(Enemy &e, uint8_t idx) {
+
+	e.active = true;
+	e.queued = false;
+	e.arriving = false;
+	e.diving = true;
+	e.returning = false;
+	e.divePhase = 0;
+	e.diveIdx = 0;
+	e.diveDirection = (random(0, 2) == 0) ? 1 : -1;
+	e.type = static_cast<EnemyType>(idx);
+
+	DivePattern pattern = static_cast<DivePattern>(random(0, static_cast<uint8_t>(DivePattern::Count)));
+	e.divePattern = pattern;
+
+	e.xCoord = 128 << 4;
+	e.yCoord = random(16, 48) << 4;
+
+}
+
+
+void updateAndRenderGameOverDivers() {
+
+	if (goDiversInitialized < Constants::GameOverDiverCount) {
+
+		if (arduboy.isFrameCount(64)) {
+			resetGameOverDiver(enemies[goDiversInitialized], goDiversInitialized);
+			goDiversInitialized++;
+		}
+
+	}
+
+	for (uint8_t i = 0; i < Constants::GameOverDiverCount; i++) {
+
+		Enemy &d = enemies[i];
+		if (!d.active) continue;
+
+		d.divePhase++;
+		d.xCoord -= 4;
+
+		switch (d.divePattern) {
+
+			case DivePattern::GentleSine:
+				d.yCoord += (int16_t)(sin((float)d.divePhase * 0.06f) * 1.2f * d.diveDirection);
+				break;
+
+			case DivePattern::WiderCosine:
+				d.xCoord -= (int16_t)(fabs(cos((float)d.divePhase * 0.08f)) * 1.5f);
+				break;
+
+			case DivePattern::BasicLoop:
+				d.xCoord += (int16_t)(cos((float)d.divePhase * 0.12f) * 1.5f);
+				d.yCoord += (int16_t)(sin((float)d.divePhase * 0.12f) * 2.2f * d.diveDirection);
+				break;
+
+			case DivePattern::LoopTheLoop:
+
+				if (d.diveIdx < 125 && arduboy.isFrameCount(2)) {
+					int8_t xInc = pgm_read_byte(&loop_x[d.diveIdx]) * d.diveDirection;
+					int8_t yInc = pgm_read_byte(&loop_y[d.diveIdx]);
+					// Subtract abs/negative so the loop doesn't push off the right edge
+					d.xCoord -= (abs(yInc) >> 1) << 4;
+					d.yCoord += (xInc >> 1) << 4;
+					d.diveIdx++;
+				}
+
+				break;
+
+			case DivePattern::ZigZag:
+
+				if (d.diveIdx < 125 && arduboy.isFrameCount(2)) {
+					int8_t xInc = pgm_read_byte(&zigzag_x[d.diveIdx]) * d.diveDirection;
+					int8_t yInc = pgm_read_byte(&zigzag_y[d.diveIdx]);
+					d.xCoord -= (abs(yInc) >> 1) << 4;
+					d.yCoord += (xInc >> 1) << 4;
+					d.diveIdx++;
+				}
+				
+				break;
+
+			default:
+				break;
+
+		}
+
+		if (d.yCoord > (52 << 4) || d.yCoord < (-18 << 4)) {
+
+			d.diveDirection = d.diveDirection == 0 ? 1 : 0;
+
+		}
+
+		int16_t sx = d.xCoord >> 4;
+		int16_t sy = d.yCoord >> 4;
+
+		// Respawn once off the screen ..
+
+		if (sx < -24 || sx > 132 || sy < -24) {
+			resetGameOverDiver(d, i);
+			continue;
+		}
+
+
+		// Render enemies ..
+
+		uint8_t frame = arduboy.getFrameCount(16) / 8;
+
+		switch (d.type) {
+
+			case EnemyType::Boss:
+				Sprites::drawExternalMask(sx, sy, Images::Large_Boss, Images::Large_Boss_Mask, frame, frame);
+				break;
+
+			case EnemyType::Butterfly:
+				Sprites::drawExternalMask(sx, sy, Images::Large_Butterfly, Images::Large_Butterfly_Mask, frame, frame);
+				break;
+
+			default:
+				Sprites::drawExternalMask(sx, sy, Images::Large_Bee, Images::Large_Bee_Mask, frame, frame);
+				break;
+
+		}
+	
+	}
+
+}
+
+void gameOver() {
+
+	arduboy.invert(false);
+	Sprites::drawOverwrite(121, 15, Images::Score, 0);
+	renderScore(score);
+	Sprites::drawExternalMask(47, 0, Images::GameOver, Images::GameOver_Mask, 0, 0);
+
+	if (arduboy.frameCount > 48) Sprites::drawOverwrite(34, 20, Images::PressA, 0);
+
+	updateAndRenderGameOverDivers();
+
+	if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
+		goDiversInitialized = false;
+		resetGame();
+		gameState = GameState::Title_Init;
+	}
+
+}

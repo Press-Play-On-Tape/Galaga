@@ -6,7 +6,7 @@
 // --- Helper Functions ---
 void spawnParticles(int16_t x, int16_t y, uint8_t count) {
 
-	for (uint8_t i = 0; i < MAX_PARTICLES && count > 0; i++) {
+	for (uint8_t i = 0; i < Constants::ParticlesMax && count > 0; i++) {
 
 		if (particles[i].life == 0) {
 			particles[i].xCoord = x << 4;
@@ -61,6 +61,8 @@ void checkEnemyAndPlayerCollision(uint8_t enemyIdx) {
 	};
 
 	if (!enemies[enemyIdx].arriving && canCollide && arduboy.collide(enemyRect, playerRect)) {
+		
+		spawnParticles(enemies[enemyIdx].xCoord >> 4, enemies[enemyIdx].yCoord >> 4, 10);
 
 		enemies[enemyIdx].active = false;
 		enemies[enemyIdx].xCoord = -1000;
@@ -70,8 +72,6 @@ void checkEnemyAndPlayerCollision(uint8_t enemyIdx) {
 		enemies[enemyIdx].diving = false;
 		enemies[enemyIdx].returning = false;
 		enemies[enemyIdx].queued = false;
-		
-		spawnParticles(enemies[enemyIdx].xCoord >> 4, enemies[enemyIdx].yCoord >> 4, 10);
 
 		if (player.shieldActive)  return;
 
@@ -175,7 +175,7 @@ void checkMothershipCollision() {
 
 		// Player bullet hits the mothership ..
 
-		for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
+		for (uint8_t b = 0; b < Constants::PlayerMaxBullets; b++) {
 
 			Rect bulletRect{
 				(int16_t)(pBullets[b].xCoord >> 4),
@@ -228,7 +228,7 @@ void checkHealthPackCollision() {
 
 	// Player shoots a health pack ..
 
-	for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
+	for (uint8_t b = 0; b < Constants::PlayerMaxBullets; b++) {
 
 		Rect bulletRect{	
 			(int16_t)(pBullets[b].xCoord >> 4),	
@@ -247,8 +247,9 @@ void checkHealthPackCollision() {
 			spawnParticles(hpX, hpY, 6);
 			beep.tone(beep.freq(1046), 6);
 
+			break;
+
 		}
-		break;
 
 	}
 
@@ -286,7 +287,7 @@ void checkEnemyAndPlayerBulletCollision(uint8_t enemyIdx) {
 		enemySz
 	};
 
-	for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
+	for (uint8_t b = 0; b < Constants::PlayerMaxBullets; b++) {
 
 		Rect bulletRect{
 			(int16_t)(pBullets[b].xCoord >> 4),
@@ -303,7 +304,6 @@ void checkEnemyAndPlayerBulletCollision(uint8_t enemyIdx) {
 
 			if (enemies[enemyIdx].hp == 0) {
 
-				enemies[enemyIdx].active = false;
 				enemies[enemyIdx].active = false;
 				score += (static_cast<uint8_t>(enemies[enemyIdx].type) + 1) * 25 * (enemies[enemyIdx].diving ? 2 : 1);
 				beep.tone(beep.freq(160), 4);
@@ -412,7 +412,7 @@ void firePlayerBullet(uint8_t offset = 4) {
 
 	if (dualShooterTimer > 0) {
 
-		for (uint8_t i = 0; i < MAX_PLAYER_BULLETS && i + 1 < MAX_PLAYER_BULLETS; i += 2) {
+		for (uint8_t i = 0; i < Constants::PlayerMaxBullets && i + 1 < Constants::PlayerMaxBullets; i += 2) {
 		
 			if (!pBullets[i].active && !pBullets[i + 1].active) {
 				pBullets[i].xCoord = player.xCoord + (4 << 4);
@@ -434,7 +434,7 @@ void firePlayerBullet(uint8_t offset = 4) {
 	}
 	else {
 
-		for (uint8_t i = 0; i < MAX_PLAYER_BULLETS; i++) {
+		for (uint8_t i = 0; i < Constants::PlayerMaxBullets; i++) {
 
 			if (!pBullets[i].active) {
 				pBullets[i].xCoord = player.xCoord + (offset << 4);
@@ -453,7 +453,7 @@ void firePlayerBullet(uint8_t offset = 4) {
 
 void fireEnemyBullet(int16_t x, int16_t y) {
 
-	for (uint8_t i = 0; i < MAX_ENEMY_BULLETS; i++) {
+	for (uint8_t i = 0; i < Constants::EnemiesMaxBullets; i++) {
 
 		if (!eBullets[i].active) {
 
@@ -474,7 +474,7 @@ void fireEnemyBullet(int16_t x, int16_t y) {
 
 void updateStars() {
 
-	for (uint8_t i = 0; i < MAX_STARS; i++) {
+	for (uint8_t i = 0; i < Constants::StarsMax; i++) {
 
 		stars[i].xCoord -= stars[i].speed;
 
@@ -494,7 +494,7 @@ void updateStars() {
 
 void updateBullets() {
 
-	for (uint8_t i = 0; i < MAX_PLAYER_BULLETS; i++) {
+	for (uint8_t i = 0; i < Constants::PlayerMaxBullets; i++) {
 
 		if (pBullets[i].active) {
 

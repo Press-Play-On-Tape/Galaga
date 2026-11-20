@@ -19,11 +19,14 @@ struct Player {
 		this->yCoord = 32 << 4;
 		this->vX = 0;
 		this->vY = 0;
-		this->lives = 1;// SJH 3;
-		this->health = 10; //SJH 100;
+		this->lives = 3;
+		this->health = 100;
 		this->shieldActive = false;
 		this->shieldDrainTimer = 0;
-	
+
+		this->lives = 3;
+		this->health = 100;
+
 	}
 
 };

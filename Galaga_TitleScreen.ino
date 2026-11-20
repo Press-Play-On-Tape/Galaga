@@ -57,7 +57,7 @@ void titleScreen_Init() {
 		enemies[i].hp = 0;
 	}
 
-	for (uint8_t i = 0; i < MAX_PLAYER_BULLETS; i++)
+	for (uint8_t i = 0; i < Constants::PlayerMaxBullets; i++)
 		pBullets[i].active = false;
 
 
@@ -72,14 +72,14 @@ void titleScreen() {
 
 		case GameState::Title_Entrace:
 
-			Sprites::drawOverwrite((enemies[0].xCoord + (Title_Coords[counter] << 4)) >> 4, enemies[0].yCoord >> 4, Images::Large_Boss, arduboy.getFrameCountHalf(96));
+			Sprites::drawOverwrite(((enemies[0].xCoord + (Title_Coords[counter] << 4)) >> 4) - 1, (enemies[0].yCoord >> 4) - 1, Images::Large_Boss, arduboy.getFrameCountHalf(96));
 
 			for (uint8_t i = 0; i < 2; i++) {
-				Sprites::drawOverwrite((enemies[i + 1].xCoord + (Title_Coords[counter] << 4)) >> 4, enemies[i + 1].yCoord >> 4, Images::Large_Butterfly, arduboy.getFrameCountHalf(96));
+				Sprites::drawOverwrite(((enemies[i + 1].xCoord + (Title_Coords[counter] << 4)) >> 4) - 1, (enemies[i + 1].yCoord >> 4) - 1, Images::Large_Butterfly, arduboy.getFrameCountHalf(96));
 			}
 
 			for (uint8_t i = 0; i < 3; i++) {
-				Sprites::drawOverwrite((enemies[i + 3].xCoord + (Title_Coords[counter] << 4)) >> 4, enemies[i + 3].yCoord >> 4, Images::Large_Bee, arduboy.getFrameCountHalf(96));
+				Sprites::drawOverwrite(((enemies[i + 3].xCoord + (Title_Coords[counter] << 4)) >> 4) - 1, (enemies[i + 3].yCoord >> 4) - 1, Images::Large_Bee, arduboy.getFrameCountHalf(96));
 			}
 
 			Sprites::drawOverwrite(player.xCoord >> 4, player.yCoord >> 4, Images::LargePlayer, arduboy.isFrameCount(2));
@@ -214,7 +214,7 @@ void titleScreen() {
 
 				// Render bullets ..
 
-				for (uint8_t i = 0; i < MAX_PLAYER_BULLETS; i++) {
+				for (uint8_t i = 0; i < Constants::PlayerMaxBullets; i++) {
 
 					if (!pBullets[i].active) continue;
 
@@ -228,7 +228,7 @@ void titleScreen() {
 					arduboy.drawFastHLine(pBullets[i].xCoord >> 4, pBullets[i].yCoord >> 4, 3, WHITE);
 				}
 
-				for (uint8_t b = 0; b < MAX_PLAYER_BULLETS; b++) {
+				for (uint8_t b = 0; b < Constants::PlayerMaxBullets; b++) {
 
 					if (!pBullets[b].active) continue;
 

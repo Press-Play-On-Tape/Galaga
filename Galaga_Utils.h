@@ -193,7 +193,7 @@ void checkMothershipCollision() {
 				if (mothership.hp == 0) {
 
 					mothership.active = false;
-					score += 200;
+					score += 40;
 					if (mothership.diving) dualShooterTimer = 600;
 					beep.tone(beep.freq(700), 8);
 
@@ -305,7 +305,7 @@ void checkEnemyAndPlayerBulletCollision(uint8_t enemyIdx) {
 			if (enemies[enemyIdx].hp == 0) {
 
 				enemies[enemyIdx].active = false;
-				score += (static_cast<uint8_t>(enemies[enemyIdx].type) + 1) * 25 * (enemies[enemyIdx].diving ? 2 : 1);
+				score += (static_cast<uint8_t>(enemies[enemyIdx].type) + 1) * 5 * (enemies[enemyIdx].diving ? 2 : 1);
 				beep.tone(beep.freq(160), 4);
 
 			}
@@ -383,7 +383,7 @@ void checkPlayerAndEnemyBulletCollision(uint8_t bulletIdx) {
 
 void launchHealthPack() {
 
-	if (score >= 3000) {
+	if (score >= 600) {
 
 		healthPackSpawnTimer++;
 
@@ -505,4 +505,53 @@ void updateBullets() {
 
 	}
 
+}
+
+
+
+void saveHighScores() {
+	EEPROM.write(EEPROM_HS_MAGIC_ADDR, EEPROM_HS_MAGIC_VAL);
+	EEPROM.put(EEPROM_HS_DATA_ADDR, highScores);
+}
+
+void loadHighScores() {
+	if (EEPROM.read(EEPROM_HS_MAGIC_ADDR) == EEPROM_HS_MAGIC_VAL) {
+		EEPROM.get(EEPROM_HS_DATA_ADDR, highScores);
+	}
+	else {
+		for (uint8_t i = 0; i < NUM_HIGH_SCORES; i++) {
+			highScores[i].initials[0] = 'A';
+			highScores[i].initials[1] = 'A';
+			highScores[i].initials[2] = 'A';
+			highScores[i].score = 0;
+		}
+		saveHighScores();
+	}
+}
+
+bool qualifiesForHighScore(uint16_t newScore) {
+	return newScore > 0 && newScore > highScores[NUM_HIGH_SCORES - 1].score;
+}
+
+// Returns the rank index (0..3) where newScore was inserted, or -1 if not on the board
+int8_t insertHighScore(uint16_t newScore, const char initials[3]) {
+	if (!qualifiesForHighScore(newScore)) return -1;
+
+	int8_t rank = NUM_HIGH_SCORES - 1;
+	while (rank > 0 && newScore > highScores[rank - 1].score) {
+		rank--;
+	}
+
+	// Shift lower scores down
+	for (int8_t i = NUM_HIGH_SCORES - 1; i > rank; i--) {
+		highScores[i] = highScores[i - 1];
+	}
+
+	highScores[rank].initials[0] = initials[0];
+	highScores[rank].initials[1] = initials[1];
+	highScores[rank].initials[2] = initials[2];
+	highScores[rank].score = newScore;
+
+	saveHighScores();
+	return rank;
 }

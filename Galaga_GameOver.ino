@@ -2,6 +2,7 @@
 
 #include <Sprites.h>
 
+
 void resetGameOverDiver(Enemy &e, uint8_t idx) {
 
 	e.active = true;
@@ -22,6 +23,67 @@ void resetGameOverDiver(Enemy &e, uint8_t idx) {
 
 }
 
+
+void beginInitialsEntry() {
+	enteringInitials = true;
+	initialCursor = 0;
+	currentInitials[0] = 'A';
+	currentInitials[1] = 'A';
+	currentInitials[2] = 'A';
+}
+
+void updateAndRenderInitialsEntry() {
+
+	if (arduboy.justPressed(RIGHT_BUTTON)) {
+		currentInitials[initialCursor]++;
+		if (currentInitials[initialCursor] > 'Z') currentInitials[initialCursor] = 'A';
+		beep.tone(beep.freq(660), 2);
+	}
+	if (arduboy.justPressed(LEFT_BUTTON)) {
+		currentInitials[initialCursor]--;
+		if (currentInitials[initialCursor] < 'A') currentInitials[initialCursor] = 'Z';
+		beep.tone(beep.freq(520), 2);
+	}
+	if (arduboy.justPressed(DOWN_BUTTON)) {
+		initialCursor = (initialCursor + 1) % 3;
+	}
+	if (arduboy.justPressed(UP_BUTTON)) {
+		initialCursor = (initialCursor + 2) % 3;
+	}
+
+	if (arduboy.justPressed(A_BUTTON)) {
+		if (initialCursor < 2) {
+			initialCursor++;
+			beep.tone(beep.freq(880), 3);
+		}
+		else {
+			insertHighScore(score, currentInitials);
+			enteringInitials = false;
+			beep.tone(beep.freq(1046), 8);
+		}
+	}
+	else if (arduboy.justPressed(B_BUTTON)) {
+		insertHighScore(score, currentInitials);
+		enteringInitials = false;
+		beep.tone(beep.freq(1046), 8);
+	}
+
+	// Draw 3 rotated initials stacked vertically (adjust x/y spacing to fit your layout)
+	const int16_t startX = 26;
+	const int16_t startY = 24;
+	const int16_t stepY = 6;
+
+	Sprites::drawOverwrite(40, 12, Images::HighScore, 0);
+
+	for (uint8_t i = 0; i < 3; i++) {
+		int16_t y = startY + (i * stepY);
+		drawRotatedChar3x5(startX, y, currentInitials[i]);
+
+		if (i == initialCursor) {
+			arduboy.drawFastVLine(startX - 1, y, 3, WHITE);
+		}
+	}
+}
 
 void updateAndRenderGameOverDivers() {
 
@@ -133,9 +195,17 @@ void gameOver() {
 	arduboy.invert(false);
 	Sprites::drawOverwrite(121, 15, Images::Score, 0);
 	renderScore(score);
-	Sprites::drawExternalMask(47, 0, Images::GameOver, Images::GameOver_Mask, 0, 0);
+	Sprites::drawExternalMask(67, 0, Images::GameOver, Images::GameOver_Mask, 0, 0);
 
-	if (arduboy.frameCount > 48) Sprites::drawOverwrite(34, 20, Images::PressA, 0);
+	if (!enteringInitials && arduboy.frameCount > 48) Sprites::drawOverwrite(54, 19, Images::PressA, 0);
+
+	if (enteringInitials) {
+		updateAndRenderInitialsEntry();
+		return;
+	}
+	else {
+		renderHighScores();
+	}
 
 	updateAndRenderGameOverDivers();
 

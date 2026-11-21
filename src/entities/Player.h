@@ -24,8 +24,8 @@ struct Player {
 		this->shieldActive = false;
 		this->shieldDrainTimer = 0;
 
-		this->lives = 3;
-		this->health = 100;
+		this->lives = 1;
+		this->health = 5;
 
 	}
 

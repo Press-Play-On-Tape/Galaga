@@ -41,10 +41,24 @@ uint8_t gameOverDelayTimer = 0;
 uint8_t goDiversInitialized = 0;
 
 
+#include <EEPROM.h>
+
+struct HighScoreEntry {
+	char initials[3];
+	uint16_t score;
+};
+
+bool enteringInitials = false;
+uint8_t initialCursor = 0;
+char currentInitials[3] = { 'A', 'A', 'A' };
 
 
+constexpr uint8_t NUM_HIGH_SCORES = 4;
+constexpr int EEPROM_HS_MAGIC_ADDR = 200;
+constexpr int EEPROM_HS_DATA_ADDR  = 201;
+constexpr uint8_t EEPROM_HS_MAGIC_VAL = 0x5A;
 
-
+HighScoreEntry highScores[NUM_HIGH_SCORES];
 
 
 
@@ -162,6 +176,7 @@ void resetGame() {
 	dualShooterTimer = 0;
 	survivalTimer = 0;
 	goDiversInitialized = false;
+	enteringInitials = false;
 
 	for (uint8_t i = 0; i < Constants::PlayerMaxBullets; i++) pBullets[i].active = false;
 	for (uint8_t i = 0; i < Constants::EnemiesMaxBullets; i++) eBullets[i].active = false;
@@ -189,15 +204,15 @@ void triggerRandomDives() {
 
 	switch (score) {
 	
-		case 0 ... 1000:
+		case 0 ... 200:
 			scoreCap = 1;
 			break;
 
-		case 1001 ... 2000:
+		case 201 ... 400:
 			scoreCap = 2;
 			break;
 
-		case 2001 ... 3000:
+		case 401 ... 600:
 			scoreCap = 3;
 			break;
 
@@ -313,6 +328,7 @@ void setup() {
 	beep.begin();
 
 	Serial.begin(9600);
+	loadHighScores();
 
 	for (uint8_t i = 0; i < Constants::StarsMax; i++) {
 		stars[i].xCoord = random(0, 115);
@@ -891,6 +907,13 @@ void updatePlaying() {
 
 			for (uint8_t i = 0; i < Constants::EnemiesMax; i++) {
 				enemies[i].active = false;
+			}
+
+			if (qualifiesForHighScore(score)) {
+				beginInitialsEntry();
+			}
+			else {
+				enteringInitials = false;
 			}
 
 			arduboy.invert(false);

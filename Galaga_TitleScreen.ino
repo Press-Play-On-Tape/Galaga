@@ -57,10 +57,20 @@ void titleScreen_Init() {
 		enemies[i].hp = 0;
 	}
 
-	for (uint8_t i = 0; i < Constants::PlayerMaxBullets; i++)
-		pBullets[i].active = false;
+// score = 123;
+// 	for (uint8_t i = 0; i < Constants::PlayerMaxBullets; i++)
+// 		pBullets[i].active = false;
 
+// if (qualifiesForHighScore(score)) {
+// beginInitialsEntry();
+// }
+// else {
+// enteringInitials = false;
+// }
 
+// arduboy.invert(false);
+// arduboy.frameCount = 0;
+// gameState = GameState::GameOver;
 	gameState = GameState::Title_Entrace;
 	arduboy.invert(false);
 
@@ -314,7 +324,8 @@ void titleScreen() {
 				counter++;				
 			}	
 			else {
-				Sprites::drawOverwrite(50, 20, Images::PressA, 0);
+				Sprites::drawOverwrite(55, 20, Images::PressA, 0);
+				renderHighScores();
 			}
 
 			Sprites::drawOverwrite(66, 0, Images::Galaga_Title, 0);

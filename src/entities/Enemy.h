@@ -19,6 +19,5 @@ struct Enemy {
 	bool queued;
 	bool arriving;
 	bool diving;
-	bool returning;
 
 };

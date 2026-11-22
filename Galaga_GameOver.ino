@@ -8,7 +8,6 @@ void resetGameOverDiver(Enemy &e, uint8_t idx) {
 	e.queued = false;
 	e.arriving = false;
 	e.diving = true;
-	e.returning = false;
 	e.divePhase = 0;
 	e.diveIdx = 0;
 	e.diveDirection = (random(0, 2) == 0) ? 1 : -1;
@@ -134,7 +133,7 @@ void updateAndRenderGameOverDivers() {
 
 			case DivePattern::ZigZag:
 
-				if (d.diveIdx < 125 && arduboy.isFrameCount(2)) {
+				if (d.diveIdx < 85 && arduboy.isFrameCount(2)) {
 					int8_t xInc = pgm_read_byte(&zigzag_x[d.diveIdx]) * d.diveDirection;
 					int8_t yInc = pgm_read_byte(&zigzag_y[d.diveIdx]);
 					d.xCoord -= (abs(yInc) >> 1) << 4;
@@ -214,7 +213,6 @@ void gameOver() {
 	updateAndRenderGameOverDivers();
 
 	if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
-		goDiversInitialized = false;
 		resetGame();
 		gameState = GameState::Title_Init;
 	}

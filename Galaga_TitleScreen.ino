@@ -184,14 +184,6 @@ void titleScreen() {
 					titleDesiredY += (random(-4, 5) << 4);
 
 				}
-				else {
-
-					if (titleDecisionTimer > random(40, 120)) {
-						titleDecisionTimer = 0;
-						titleDesiredY = random(10, 54) << 4;
-					}
-
-				}
 
 				if (!exploding && arduboy.isFrameCount(32)) {
 					firePlayerBullet(12);
@@ -308,8 +300,6 @@ void titleScreen() {
 			break;
 
 	}
-
-	// Sprites::drawOverwrite(33, 0, Images::Galaga_Title, 0);
 
 	if (arduboy.justPressed(A_BUTTON) || arduboy.justPressed(B_BUTTON)) {
 		resetGame();

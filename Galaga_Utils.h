@@ -78,7 +78,6 @@ void checkEnemyAndPlayerCollision(uint8_t enemyIdx) {
 
 		enemies[enemyIdx].arriving = false;
 		enemies[enemyIdx].diving = false;
-		enemies[enemyIdx].returning = false;
 		enemies[enemyIdx].queued = false;
 
 		if (player.shieldActive)  return;

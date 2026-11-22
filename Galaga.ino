@@ -98,7 +98,6 @@ void initWave() {
 
 			enemies[idx].active = true;
 			enemies[idx].diving = false;
-			enemies[idx].returning = false;
 			enemies[idx].queued = true;
 			enemies[idx].arriving = false;
 
@@ -241,7 +240,6 @@ void triggerRandomDives() {
 
 	uint8_t squadSize = random(1, maxSquad + 1);
 	DivePattern pattern = static_cast<DivePattern>(random(0, static_cast<uint8_t>(DivePattern::Count)));
-	// pattern = DivePattern::ZigZag;
 
 	for (uint8_t s = 0; s < squadSize; s++) {
 
@@ -254,7 +252,6 @@ void triggerRandomDives() {
 
 			if (enemies[idx].active &&
 				!enemies[idx].diving &&
-				!enemies[idx].returning &&
 				!enemies[idx].arriving &&
 				!enemies[idx].queued) {
 				bool rowOccupied = false;
@@ -288,7 +285,6 @@ void triggerRandomDives() {
 			enemies[target].xCoord = enemies[target].homeX;
 			enemies[target].yCoord = enemies[target].homeY + formationOffsetY;
 			enemies[target].diving = true;
-			enemies[target].returning = false;
 			enemies[target].divePhase = 0;
 			enemies[target].diveIdx = 0;
 			enemies[target].divePattern = pattern;
@@ -442,7 +438,6 @@ void updatePlaying() {
 	else {
 
 		healthPack.yCoord += healthPack.vy;
-		int16_t hpX = healthPack.xCoord >> 4;
 		int16_t hpY = healthPack.yCoord >> 4;
 
 		if (hpY < -10 || hpY > 70) {
@@ -529,7 +524,7 @@ void updatePlaying() {
 	}
 
 
-	float dynamicAmplitude = 4.0f;
+	constexpr float dynamicAmplitude = 4.0f;
 
 	formationOffsetY = (1 << 4) + (int16_t)(sin((float)formationFrame * 0.025f) * dynamicAmplitude * 16.0f);
 
@@ -697,7 +692,6 @@ void updatePlaying() {
 
 				enemies[i].active = true;
 				enemies[i].diving = false;
-				enemies[i].returning = false;
 				enemies[i].queued = false;
 				enemies[i].arriving = true;
 				enemies[i].entryPhase = 0;
@@ -755,7 +749,7 @@ void updatePlaying() {
 
 			case DivePattern::ZigZag:
 
-				if (enemies[i].diveIdx < 125 && arduboy.isFrameCount(2)) {
+				if (enemies[i].diveIdx < 85 && arduboy.isFrameCount(2)) {
 
 					int8_t xInc = pgm_read_byte(&zigzag_x[enemies[i].diveIdx]) * enemies[i].diveDirection;
 					int8_t yInc = pgm_read_byte(&zigzag_y[enemies[i].diveIdx]);// * enemies[i].diveDirection;
@@ -784,25 +778,6 @@ void updatePlaying() {
 		// Player bullet hits an enemy ..
 
 		checkEnemyAndPlayerBulletCollision(i);
-
-		bool canCollide = enemies[i].diving;
-
-		if (!canCollide && !enemies[i].arriving) {
-
-			for (uint8_t other = 0; other < Constants::EnemiesMax; other++) {
-
-				if (enemies[other].active && !enemies[other].diving && !enemies[other].arriving &&
-					!enemies[other].queued && abs(enemies[other].homeY - enemies[i].homeY) < (8 << 4)) {
-
-					if (enemies[other].homeX < enemies[i].homeX) {
-						break;
-					}
-
-				}
-
-			}
-
-		}
 
 
 		// Has the player and the enemy collided?

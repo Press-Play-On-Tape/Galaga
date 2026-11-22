@@ -123,7 +123,7 @@ void renderEnemy_Shared(uint8_t enemyIdx) {
 
 void renderEnemy_Static(uint8_t enemyIdx) {
 
-	if (enemies[enemyIdx].active && !enemies[enemyIdx].arriving && !enemies[enemyIdx].diving && !enemies[enemyIdx].returning && !enemies[enemyIdx].queued) {
+	if (enemies[enemyIdx].active && !enemies[enemyIdx].arriving && !enemies[enemyIdx].diving && !enemies[enemyIdx].queued) {
 
 		renderEnemy_Shared(enemyIdx);
 
@@ -133,7 +133,7 @@ void renderEnemy_Static(uint8_t enemyIdx) {
 
 void renderEnemy_Diving(uint8_t enemyIdx) {
 
-	if (enemies[enemyIdx].active && (enemies[enemyIdx].arriving || enemies[enemyIdx].diving || enemies[enemyIdx].returning || enemies[enemyIdx].queued)) {
+	if (enemies[enemyIdx].active && (enemies[enemyIdx].arriving || enemies[enemyIdx].diving || enemies[enemyIdx].queued)) {
 
 		renderEnemy_Shared(enemyIdx);
 
@@ -150,11 +150,11 @@ void renderMothership(int8_t x, int8_t y) {
 }
 
 void renderHealthPack() {
-
-	int16_t hpX = healthPack.xCoord >> 4;
-	int16_t hpY = healthPack.yCoord >> 4;
 	
 	if (healthPack.active) {
+
+		int16_t hpX = healthPack.xCoord >> 4;
+		int16_t hpY = healthPack.yCoord >> 4;
 
 		Sprites::drawExternalMask(hpX - 1, hpY - 1, Images::HealthPack, Images::HealthPack_Mask, 0, 0);
 

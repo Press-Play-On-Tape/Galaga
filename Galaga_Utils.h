@@ -25,7 +25,10 @@ void spawnMothership() {
 
 	mothership.spawnTimer++;
 
-	if (mothership.spawnTimer > max(150, 350 - (survivalTimer / 4))) {
+	// Note: cast to int16_t - on the AVR a uint16_t promotes to 'unsigned int', so the subtraction
+	// would wrap to a huge number instead of going negative ..
+
+	if (mothership.spawnTimer > max(150, 350 - (int16_t)(survivalTimer / 4))) {
 		mothership.spawnTimer = 0;
 		mothership.active = true;
 		mothership.diving = false;
@@ -38,11 +41,119 @@ void spawnMothership() {
 	
 }
 
+// ----------------------------------------------------------------------------
+//  Enemy rotation.
+//
+//  The enemy images have 16 frames, each rotated a further 22.5 degrees. Frame 0
+//  is the formation pose, facing -x (down the player's view, towards the player).
+//  Frame k faces R(k * 22.5deg) * (-1, 0) in buffer coordinates.
+//
+constexpr uint8_t EnemyHeadings = 16;
+constexpr uint8_t EnemyTurnFrames = 2;		// Frames between each 22.5 degree turn step
+
+uint8_t headingFromMovement(int16_t moveX, int16_t moveY) {
+
+	// The direction 'forward' points, relative to the formation pose ..
+
+	int16_t fx = -moveX;
+	int16_t fy = -moveY;
+
+	int32_t ax = abs(fx);
+	int32_t ay = abs(fy);
+
+
+	// Pick the nearest 22.5 degree step within the quadrant using
+	// tan(11.25) ~ 1/5, tan(33.75) ~ 2/3, tan(56.25) ~ 3/2, tan(78.75) ~ 5 ..
+
+	uint8_t q;
+
+	if (ay * 5 < ax)           q = 0;
+	else if (ay * 3 < ax * 2)  q = 1;
+	else if (ay * 2 < ax * 3)  q = 2;
+	else if (ay < ax * 5)      q = 3;
+	else                       q = 4;
+
+	if (fx >= 0 && fy >= 0) return q;
+	if (fx < 0 && fy >= 0)  return 8 - q;
+	if (fx < 0)             return 8 + q;
+	return (EnemyHeadings - q) % EnemyHeadings;
+
+}
+
+// Turn one step (the shortest way round) towards the target heading ..
+
+void turnEnemyTowards(Enemy &enemy, uint8_t targetHeading) {
+
+	if (enemy.turnTimer > 0) {
+		enemy.turnTimer--;
+		return;
+	}
+
+	uint8_t diff = (targetHeading + EnemyHeadings - enemy.heading) % EnemyHeadings;
+	if (diff == 0) return;
+
+	if (diff < EnemyHeadings / 2) {
+		enemy.heading = (enemy.heading + 1) % EnemyHeadings;
+	}
+	else {
+		enemy.heading = (enemy.heading + EnemyHeadings - 1) % EnemyHeadings;
+	}
+
+	enemy.turnTimer = EnemyTurnFrames - 1;
+
+}
+
 void startPlayerPuff() {
 
 	player.puffX = player.xCoord >> 4;
 	player.puffY = player.yCoord >> 4;
 	player.deathTimer = 28; // 7 frames * 4 frames per puff
+
+}
+
+
+// ----------------------------------------------------------------------------
+//  Damage the player (unless shielded or invulnerable). After a hit that does
+//  not cost a life the player gets a short grace period so that several hits
+//  in quick succession (e.g. mothership then a diving enemy) don't stack up.
+//
+constexpr uint8_t PlayerHitGraceFrames = 45;
+constexpr uint8_t PlayerRespawnGraceFrames = 90;
+
+void damagePlayer(int16_t amount, uint8_t particleCount, uint8_t toneDuration) {
+
+	// No more damage once the last life is lost (stops lives-- wrapping 0 -> 255 during the game over delay) ..
+
+	if (player.lives == 0 || player.shieldActive || player.invulnTimer > 0) return;
+
+	spawnParticles(player.xCoord >> 4, player.yCoord >> 4, particleCount);
+	player.health -= amount;
+	screenInvertTimer = 6;
+	beep.tone(beep.freq(80), toneDuration);
+
+	if (player.health > 0) {
+		player.invulnTimer = PlayerHitGraceFrames;
+		return;
+	}
+
+	startPlayerPuff();
+	player.lives--;
+	beep.tone(beep.freq(50), 25);
+
+	if (player.lives == 0) {
+
+		gameOverDelayTimer = 60;
+		player.health = 0;
+
+	}
+	else {
+
+		player.health = 100;
+		player.xCoord = 4 << 4;
+		player.yCoord = 32 << 4;
+		player.invulnTimer = PlayerRespawnGraceFrames;
+
+	}
 
 }
 
@@ -80,37 +191,7 @@ void checkEnemyAndPlayerCollision(uint8_t enemyIdx) {
 		enemies[enemyIdx].diving = false;
 		enemies[enemyIdx].queued = false;
 
-		if (player.shieldActive)  return;
-
-		if (player.invulnTimer == 0) {
-
-			spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 8);
-			player.health -= 34;
-			screenInvertTimer = 6;
-			beep.tone(beep.freq(80), 10);
-
-			if (player.health <= 0) {
-
-				startPlayerPuff();
-				player.lives--;
-				beep.tone(beep.freq(50), 25);
-
-				if (player.lives == 0) {
-
-					gameOverDelayTimer = 60;
-					player.health = 0;
-
-				}
-				else {
-					player.health = 100;
-					player.xCoord = 4 << 4;
-					player.yCoord = 32 << 4;
-					player.invulnTimer = 90;
-				}
-
-			}
-
-		}
+		damagePlayer(30, 8, 10);
 
 	}
 
@@ -140,38 +221,8 @@ void checkMothershipCollision() {
 
 			mothership.active = false;
 			spawnParticles(mothership.xCoord >> 4, mothership.yCoord >> 4, 20);
-
-			if (player.shieldActive)  return;
-
-			if (player.invulnTimer == 0) {
-
-				spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 20);
-				player.health -= 50;
-				screenInvertTimer = 6;
-				beep.tone(beep.freq(80), 15);
-
-				if (player.health <= 0) {
-
-					startPlayerPuff();
-					player.lives--;
-					beep.tone(beep.freq(50), 25);
-
-					if (player.lives == 0) {
-
-						gameOverDelayTimer = 60;
-						player.health = 0;
-
-					}
-					else {
-						player.health = 100;
-						player.xCoord = 4 << 4;
-						player.yCoord = 32 << 4;
-						player.invulnTimer = 90;
-					}
-
-				}
-
-			}
+			damagePlayer(50, 20, 15);
+			return;		// Mothership is gone, so skip the bullet checks below ..
 
 		}
 
@@ -344,39 +395,7 @@ void checkPlayerAndEnemyBulletCollision(uint8_t bulletIdx) {
 	if (arduboy.collide(bulletRect, playerRect)) {
 
 		eBullets[bulletIdx].active = false;
-
-		if (player.shieldActive)  return;
-
-		if (player.invulnTimer == 0) {
-
-			spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 8);
-
-			player.health -= 34;
-			screenInvertTimer = 6;
-			beep.tone(beep.freq(80), 10);
-
-			if (player.health <= 0) {
-
-				startPlayerPuff();
-				player.lives--;
-				beep.tone(beep.freq(50), 25);
-
-				if (player.lives == 0) {
-
-					gameOverDelayTimer = 60;
-					player.health = 0;
-
-				}
-				else {
-					player.health = 100;
-					player.xCoord = 4 << 4;
-					player.yCoord = 32 << 4;
-					player.invulnTimer = 90;
-				}
-
-			}
-
-		}
+		damagePlayer(30, 8, 10);
 
 	}
 

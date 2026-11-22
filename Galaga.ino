@@ -32,6 +32,7 @@ uint16_t diveTimer = 0;
 
 uint8_t arrivalReleaseTimer = 0;
 uint16_t replenishTimer = 0;
+bool waveEnemiesCleared = false;	// All enemies destroyed, only the mothership is left this wave
 uint16_t formationFrame = 0;
 uint8_t gameOverDelayTimer = 0;
 uint8_t goDiversInitialized = 0;
@@ -79,20 +80,23 @@ void initWave() {
 
 	arrivalReleaseTimer = 0;
 	replenishTimer = 0;
+	waveEnemiesCleared = false;
 	formationOffsetY = 0;
 	formationFrame = 0;
 
 	uint8_t idx = 0;
 
-	for (uint8_t c = 0; c < Constants::EnemyRows; c++) {
+	// Rows run across the player's view (fixed buffer x), columns run up it (fixed buffer y) ..
 
-		for (uint8_t r = 0; r < Constants::EnemyColumns; r++) {
+	for (uint8_t row = 0; row < Constants::EnemyRows; row++) {
 
-			const uint8_t COL_SPACING = 10;
-			const uint8_t ROW_SPACING = 9;
+		for (uint8_t col = 0; col < Constants::EnemyColumns; col++) {
 
-			enemies[idx].homeX = (72 + (c * COL_SPACING)) << 4;
-			enemies[idx].homeY = (6 + (r * ROW_SPACING)) << 4;
+			const uint8_t ROW_SPACING = 10;
+			const uint8_t COL_SPACING = 9;
+
+			enemies[idx].homeX = (72 + (row * ROW_SPACING)) << 4;
+			enemies[idx].homeY = (6 + (col * COL_SPACING)) << 4;
 
 			if (enemies[idx].homeY < (2 << 4)) enemies[idx].homeY = 2 << 4;
 
@@ -100,27 +104,29 @@ void initWave() {
 			enemies[idx].diving = false;
 			enemies[idx].queued = true;
 			enemies[idx].arriving = false;
+			enemies[idx].heading = 0;
+			enemies[idx].turnTimer = 0;
 
-			// Enter from sides at least 24 pixels above the bottom (Y between 4 and 38)
+			// Pick a random edge of the view to enter from ..
 			Side side = static_cast<Side>(random(0, 3));
 
 			enemies[idx].spawnSide = side;
 
 			switch (side) {
 
-			case Side::Left:
+			case Side::Right:
 
-				enemies[idx].xCoord = -40 << 4;
-				enemies[idx].yCoord = random(4, 56) << 4;
+				enemies[idx].xCoord = random(40, 100) << 4;
+				enemies[idx].yCoord = (64 + 32) << 4;
 				break;
 
-			case Side::Right:
+			case Side::Top:
 
 				enemies[idx].xCoord = 168 << 4;
 				enemies[idx].yCoord = random(4, 56) << 4;
 				break;
 
-			default:
+			default:	// Side::Left
 
 				enemies[idx].xCoord = random(40, 100) << 4;
 				enemies[idx].yCoord = -32 << 4;
@@ -128,7 +134,7 @@ void initWave() {
 
 			}
 
-			switch (c) {
+			switch (row) {
 
 			case 1:
 				enemies[idx].type = EnemyType::Butterfly;
@@ -452,7 +458,7 @@ void updatePlaying() {
 
 
 	arrivalReleaseTimer++;
-	uint8_t releaseThreshold = max(10, 25 - (survivalTimer / 300));
+	uint8_t releaseThreshold = max(10, 25 - (int16_t)(survivalTimer / 300));	// int16_t cast stops an unsigned wrap on the AVR
 
 	if (arrivalReleaseTimer > releaseThreshold) {
 
@@ -473,8 +479,10 @@ void updatePlaying() {
 
 	}
 
+	// Bring back destroyed enemies over time, unless they have all been cleared and only the mothership is left ..
+
 	replenishTimer++;
-	if (replenishTimer > 250) {
+	if (!waveEnemiesCleared && replenishTimer > 250) {
 
 		replenishTimer = 0;
 
@@ -489,22 +497,24 @@ void updatePlaying() {
 				enemies[idx].queued = true;
 				enemies[idx].arriving = false;
 				enemies[idx].spawnSide = side;
+				enemies[idx].heading = 0;
+				enemies[idx].turnTimer = 0;
 
 				switch (side) {
 
-				case Side::Left:
+				case Side::Right:
 
-					enemies[idx].xCoord = -24 << 4;
-					enemies[idx].yCoord = ((enemies[idx].homeY >> 4) + random(-6, 7)) << 4;
+					enemies[idx].xCoord = ((enemies[idx].homeX >> 4) + random(-20, 21)) << 4;
+					enemies[idx].yCoord = (64 + 24) << 4;
 					break;
 
-				case Side::Right:
+				case Side::Top:
 
 					enemies[idx].xCoord = 144 << 4;
 					enemies[idx].yCoord = ((enemies[idx].homeY >> 4) + random(-6, 7)) << 4;
 					break;
 
-				default:
+				default:	// Side::Left
 
 					enemies[idx].xCoord = ((enemies[idx].homeX >> 4) + random(-20, 21)) << 4;
 					enemies[idx].yCoord = -24 << 4;
@@ -572,7 +582,7 @@ void updatePlaying() {
 		if (formationFrame > 120) { 
 
 			diveTimer++;
-			uint16_t currentDiveInterval = max(40, 150 - (wave * 8) - (survivalTimer / 40));
+			uint16_t currentDiveInterval = max(40, 150 - (wave * 8) - (int16_t)(survivalTimer / 40));	// int16_t cast stops an unsigned wrap on the AVR
 
 			if (diveTimer >= currentDiveInterval) {
 				diveTimer = 0;
@@ -606,19 +616,13 @@ void updatePlaying() {
 
 			switch (enemies[i].spawnSide) {
 
-			case Side::Left:  // left spiral
-
-				curveY = (int16_t)(sin(enemies[i].entryPhase * 0.06f) * (12 << 4));
-				curveX = (int16_t)(cos(enemies[i].entryPhase * 0.05f) * (5 << 4));
-				break;
-
-			case Side::Right:  // right spiral
+			case Side::Top:  // spiral in from above
 
 				curveY = (int16_t)(sin(enemies[i].entryPhase * 0.06f) * (12 << 4));
 				curveX = -(int16_t)(cos(enemies[i].entryPhase * 0.05f) * (5 << 4));
 				break;
 
-			default:  // top dive
+			default:  // Side::Left / Side::Right - weave in from the side
 
 				curveX = (int16_t)(sin(enemies[i].entryPhase * 0.08f) * (10 << 4));
 				break;
@@ -663,7 +667,7 @@ void updatePlaying() {
 
 			int16_t diveSpeed = 10 + (wave * 1) + (survivalTimer / 300);
 
-			// Check if the enemy has gone completely off the bottom/screen edge to reform at the top
+			// Has the enemy gone off the bottom of the view or either side? If so, re-enter from a random edge ..
 			if (enemies[i].xCoord < (-8 << 4) || enemies[i].yCoord < (-30 << 4) || enemies[i].yCoord >(90 << 4)) {
 
 				Side side = static_cast<Side>(random(0, 3));
@@ -671,19 +675,19 @@ void updatePlaying() {
 
 				switch (side) {
 
-				case Side::Left:
+				case Side::Right:
 
-					enemies[i].xCoord = -24 << 4;
-					enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
+					enemies[i].xCoord = ((enemies[i].homeX >> 4) + random(-20, 21)) << 4;
+					enemies[i].yCoord = (64 + 24) << 4;
 					break;
 
-				case Side::Right:
+				case Side::Top:
 
 					enemies[i].xCoord = 144 << 4;
 					enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
 					break;
 
-				default: // top re-entry
+				default: // Side::Left re-entry
 					enemies[i].xCoord = ((enemies[i].homeX >> 4) + random(-20, 21)) << 4;
 					enemies[i].yCoord = -24 << 4;
 					break;
@@ -700,6 +704,11 @@ void updatePlaying() {
 
 				continue;
 			}
+
+			// Remember where the enemy started this frame so it can turn to face the way it moves ..
+
+			int16_t diveStartX = enemies[i].xCoord;
+			int16_t diveStartY = enemies[i].yCoord;
 
 			// Force forward dive momentum along xCoord to always move toward the exit (decreasing xCoord)
 			enemies[i].divePhase += 1;
@@ -736,11 +745,11 @@ void updatePlaying() {
 
 				if (enemies[i].diveIdx < 125 && arduboy.isFrameCount(2)) {
 
-					int8_t xInc = pgm_read_byte(&loop_x[enemies[i].diveIdx]) * enemies[i].diveDirection;
-					int8_t yInc = pgm_read_byte(&loop_y[enemies[i].diveIdx]);// * enemies[i].diveDirection;
+					int8_t yStep = pgm_read_byte(&loop_dy[enemies[i].diveIdx]) * enemies[i].diveDirection;
+					int8_t xStep = pgm_read_byte(&loop_dx[enemies[i].diveIdx]);// * enemies[i].diveDirection;
 
-					enemies[i].xCoord += yInc << 4;
-					enemies[i].yCoord += xInc << 4;
+					enemies[i].xCoord += xStep << 4;
+					enemies[i].yCoord += yStep << 4;
 					enemies[i].diveIdx++;
 
 				}
@@ -751,16 +760,25 @@ void updatePlaying() {
 
 				if (enemies[i].diveIdx < 85 && arduboy.isFrameCount(2)) {
 
-					int8_t xInc = pgm_read_byte(&zigzag_x[enemies[i].diveIdx]) * enemies[i].diveDirection;
-					int8_t yInc = pgm_read_byte(&zigzag_y[enemies[i].diveIdx]);// * enemies[i].diveDirection;
+					int8_t yStep = pgm_read_byte(&zigzag_dy[enemies[i].diveIdx]) * enemies[i].diveDirection;
+					int8_t xStep = pgm_read_byte(&zigzag_dx[enemies[i].diveIdx]);// * enemies[i].diveDirection;
 
-					enemies[i].xCoord += yInc << 4;
-					enemies[i].yCoord += xInc << 4;
+					enemies[i].xCoord += xStep << 4;
+					enemies[i].yCoord += yStep << 4;
 					enemies[i].diveIdx++;
 
 				}
 
 				break;
+			}
+
+			// Turn to face the direction of travel (some patterns only move every other frame) ..
+
+			int16_t moveX = enemies[i].xCoord - diveStartX;
+			int16_t moveY = enemies[i].yCoord - diveStartY;
+
+			if (moveX != 0 || moveY != 0) {
+				turnEnemyTowards(enemies[i], headingFromMovement(moveX, moveY));
 			}
 
 			// Firing check during dive
@@ -775,6 +793,13 @@ void updatePlaying() {
 
 		}
 
+		// Enemies that are not diving turn back to the formation pose ..
+
+		if (!enemies[i].diving) {
+			turnEnemyTowards(enemies[i], 0);
+		}
+
+
 		// Player bullet hits an enemy ..
 
 		checkEnemyAndPlayerBulletCollision(i);
@@ -782,14 +807,26 @@ void updatePlaying() {
 
 		// Has the player and the enemy collided?
 
-		checkMothershipCollision();
 		checkEnemyAndPlayerCollision(i);
 		renderEnemy_Static(i);
 
 
 	}
 
+
+	// Mothership collisions are checked once per frame, outside the enemy loop, so
+	// the mothership can still be shot after the last enemy has been destroyed ..
+
+	checkMothershipCollision();
+
+
+	// The wave is only over once every enemy and the mothership have been destroyed ..
+
 	if (activeEnemies == 0) {
+		waveEnemiesCleared = true;
+	}
+
+	if (activeEnemies == 0 && !mothership.active) {
 		wave++;
 		initWave();
 	}
@@ -878,22 +915,6 @@ void updatePlaying() {
 		Sprites::drawSelfMasked(px - 4, py - 4, Images::Shield, arduboy.getFrameCount(24) / 3);
 	}
 
-	// Check if all enemies in the wave are completely inactive (dead) ..
-
-	bool allEnemiesDead = true;
-
-	for (uint8_t i = 0; i < Constants::EnemiesMax; i++) {
-		if (enemies[i].active) {
-			allEnemiesDead = false;
-			break;
-		}
-	}
-
-	if (allEnemiesDead) {
-		wave++;
-		initWave();
-	}
-
 	if (gameOverDelayTimer > 0) {
 
 		gameOverDelayTimer--;
@@ -935,7 +956,7 @@ void loop() {
 
 	case GameState::Title_Init:
 		titleScreen_Init();
-		[[fallthrough]]
+		[[fallthrough]];
 
 	case GameState::Title_Entrace ... GameState::Title_PressA:
 		updateStars();

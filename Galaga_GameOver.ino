@@ -122,10 +122,10 @@ void updateAndRenderGameOverDivers() {
 			case DivePattern::LoopTheLoop:
 
 				if (d.diveIdx < 125 && arduboy.isFrameCount(2)) {
-					int8_t xInc = pgm_read_byte(&loop_x[d.diveIdx]) * d.diveDirection;
-					int8_t yInc = pgm_read_byte(&loop_y[d.diveIdx]);
-					d.xCoord -= (abs(yInc) >> 1) << 4;
-					d.yCoord += (xInc >> 1) << 4;
+					int8_t yStep = pgm_read_byte(&loop_dy[d.diveIdx]) * d.diveDirection;
+					int8_t xStep = pgm_read_byte(&loop_dx[d.diveIdx]);
+					d.xCoord -= (abs(xStep) >> 1) << 4;
+					d.yCoord += (yStep >> 1) << 4;
 					d.diveIdx++;
 				}
 
@@ -134,10 +134,10 @@ void updateAndRenderGameOverDivers() {
 			case DivePattern::ZigZag:
 
 				if (d.diveIdx < 85 && arduboy.isFrameCount(2)) {
-					int8_t xInc = pgm_read_byte(&zigzag_x[d.diveIdx]) * d.diveDirection;
-					int8_t yInc = pgm_read_byte(&zigzag_y[d.diveIdx]);
-					d.xCoord -= (abs(yInc) >> 1) << 4;
-					d.yCoord += (xInc >> 1) << 4;
+					int8_t yStep = pgm_read_byte(&zigzag_dy[d.diveIdx]) * d.diveDirection;
+					int8_t xStep = pgm_read_byte(&zigzag_dx[d.diveIdx]);
+					d.xCoord -= (abs(xStep) >> 1) << 4;
+					d.yCoord += (yStep >> 1) << 4;
 					d.diveIdx++;
 				}
 				

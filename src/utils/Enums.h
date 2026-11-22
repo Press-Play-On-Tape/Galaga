@@ -1,5 +1,19 @@
 #pragma once
 
+// ----------------------------------------------------------------------------
+//  Screen orientation
+//
+//  The game is played with the Arduboy rotated 90 degrees counter-clockwise.
+//  All positions and velocities (xCoord, yCoord, vx, vy, homeX, ...) are in
+//  screen-buffer coordinates. Words like top / bottom / left / right / row /
+//  column describe what the player sees:
+//
+//    Buffer x increasing (0 -> 127)  =  up the screen (forward, towards enemies)
+//    Buffer y increasing (0 -> 63)   =  left to right across the screen
+//
+//  So a formation 'row' is a fixed buffer x and a 'column' is a fixed buffer y.
+// ----------------------------------------------------------------------------
+
 namespace Constants {
 
 	constexpr uint8_t PlayerMaxBullets = 4;
@@ -41,11 +55,14 @@ enum class GameState : uint8_t {
 	
 };
 
+// The edge of the player's view an enemy enters from. Order matters: values are
+// picked with random(0, 3).
+
 enum class Side : uint8_t {
 
-	Left,
-	Right,
-	Top
+	Right,		// Buffer y > 63
+	Top,		// Buffer x > 127
+	Left		// Buffer y < 0
 
 };
 
@@ -71,7 +88,11 @@ enum class DivePattern : uint8_t {
 };
 
 
-const int8_t loop_x[125] PROGMEM = {
+// Dive paths: per-step deltas in buffer coordinates. The *_dy (sideways) values
+// are multiplied by the enemy's diveDirection to mirror the path. Negative *_dx
+// moves the enemy down the player's view, towards the player.
+
+const int8_t loop_dy[125] PROGMEM = {
     // 270-degree loop (41 steps)
      0,  2,  2,  1,  2,  1,  2,  1,  1,  1,  1,  0,  1,  0,  0,  0, -1,  0, -1, -1,
     -1, -2, -1, -2, -1, -2, -2, -2, -1, -2, -2, -1, -2, -1, -1, -1, -1, -1, -1,  0,
@@ -86,7 +107,7 @@ const int8_t loop_x[125] PROGMEM = {
      2,  1,  1,  1,  0,  1,  0,  0
 };
 
-const int8_t loop_y[125] PROGMEM = {
+const int8_t loop_dx[125] PROGMEM = {
     // 270-degree loop (41 steps)
      0,  0,  0,  1,  1,  1,  1,  1,  1,  2,  1,  2,  2,  1,  2,  2,  2,  1,  2,  1,
      2,  1,  1,  1,  0,  1,  0,  0,  0, -1,  0, -1, -1, -1, -1, -2, -1, -2, -1, -2,
@@ -102,7 +123,7 @@ const int8_t loop_y[125] PROGMEM = {
 };
 
 
-const int8_t zigzag_x[85] PROGMEM = {
+const int8_t zigzag_dy[85] PROGMEM = {
      2,  2,  3,  2,  2,  2,  1,  1,  0, -1, -1, -2, -2, -2, -3, -2, -2,
     -2, -2, -3, -2, -2, -2, -1, -1,  0,  1,  1,  2,  2,  2,  3,  2,  2,
      2,  2,  3,  2,  2,  2,  1,  1,  0, -1, -1, -2, -2, -2, -3, -2, -2,
@@ -110,7 +131,7 @@ const int8_t zigzag_x[85] PROGMEM = {
      2,  2,  3,  2,  2,  2,  1,  1,  0, -1, -1, -2, -2, -2, -3, -2, -2
 };
 
-const int8_t zigzag_y[85] PROGMEM = {
+const int8_t zigzag_dx[85] PROGMEM = {
     -2, -1, -2, -2, -1, -2, -2, -1, -2, -1, -2, -2, -1, -2, -2, -1, -2,
     -2, -1, -2, -2, -1, -2, -2, -1, -2, -1, -2, -2, -1, -2, -2, -1, -2,
     -2, -1, -2, -2, -1, -2, -2, -1, -2, -1, -2, -2, -1, -2, -2, -1, -2,

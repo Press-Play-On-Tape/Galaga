@@ -7,6 +7,7 @@
 uint8_t counter = 0;
 uint16_t titleDecisionTimer = 0;
 int16_t titleDesiredY = 32 << 4;
+bool homing = false;		// Set when the title-screen player is locked on to an enemy (applies next frame)
 
 void titleScreen_Init() {
 
@@ -47,6 +48,7 @@ void titleScreen_Init() {
 		enemies[i].hp = 0;
 	}
 
+	homing = false;
 	gameState = GameState::Title_Entrace;
 	arduboy.invert(false);
 
@@ -92,7 +94,7 @@ void titleScreen() {
 
 				titleDecisionTimer++;
 
-				if (titleDecisionTimer > random(40, 120)) {
+				if (!homing && titleDecisionTimer > random(40, 120)) {
 
 					titleDecisionTimer = 0;
 					titleDesiredY = random(10, 54) << 4;
@@ -100,10 +102,18 @@ void titleScreen() {
 				}
 
 				int16_t delta = titleDesiredY - player.yCoord;
-				player.yCoord += delta / 16;
-				player.yCoord += (int16_t)(sin((float)arduboy.frameCount * 0.11f) * (1 << 4));
 
-				int8_t offset = (int8_t)(sin((float)arduboy.frameCount * 0.025f) * 8.0f) << 4;
+				if (homing) {
+					player.yCoord += delta / 8;		// Close in quickly with no wobble once targeting an enemy ..
+				}
+				else {
+					player.yCoord += delta / 16;
+					player.yCoord += (int16_t)(sin((float)arduboy.frameCount * 0.11f) * (1 << 4));
+				}
+
+				homing = false;
+
+				int16_t offset = (int16_t)(sin((float)arduboy.frameCount * 0.025f) * 8.0f) << 4;
 
 				if (enemies[0].active && enemies[0].hp < 3) {
 					Sprites::drawOverwrite(enemies[0].xCoord >> 4, (enemies[0].yCoord + offset) >> 4, Images::Large_Boss, arduboy.getFrameCountHalf(96));
@@ -166,22 +176,35 @@ void titleScreen() {
 				}
 
 
-				// If there are only two or less enemies, make sure the player moves towards them .. (otherwise the title screen can go on forever).
+				// Once the first two enemies are dead, lock on to the remaining enemy nearest
+				// the player so the title screen doesn't drag on ..
 
-				uint8_t aliveCnt = 6 - deadCnt;
+				if (deadCnt >= 2) {
 
-				if (aliveCnt <= 2 && aliveCnt > 0) {
-
-					int16_t targetY = 0;
+					int16_t bestTargetY = 0;
+					uint16_t bestDistance = 0xFFFF;
 
 					for (uint8_t i = 0; i < 6; i++) {
-						if (enemies[i].hp == 0) {   // still alive
-							targetY += enemies[i].yCoord + offset;
+
+						if (enemies[i].hp != 0) continue;   // dead or exploding
+
+						// Aim the bullet (fired 3px across from the player) at the enemy's centre ..
+
+						uint8_t enemySize = (i == 0) ? 16 : 11;
+						int16_t targetY = enemies[i].yCoord + offset + (((enemySize / 2) - 3) << 4);
+						uint16_t distance = abs(targetY - player.yCoord);
+
+						if (distance < bestDistance) {
+							bestDistance = distance;
+							bestTargetY = targetY;
 						}
+
 					}
 
-					titleDesiredY = targetY / aliveCnt;
-					titleDesiredY += (random(-4, 5) << 4);
+					if (bestDistance != 0xFFFF) {
+						titleDesiredY = bestTargetY;
+						homing = true;
+					}
 
 				}
 

@@ -14,7 +14,10 @@ struct Enemy {
 	uint8_t diveIdx;
 	int8_t diveDirection;
 	Side spawnSide;
-	
+
+	uint8_t heading;		// Sprite frame 0-15: the direction the enemy faces in 22.5 degree steps (0 = formation pose)
+	uint8_t turnTimer;		// Frames until the enemy can turn another step
+
 	bool active;
 	bool queued;
 	bool arriving;

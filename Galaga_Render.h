@@ -38,7 +38,7 @@ void renderScore(uint16_t currentScore) {
 void renderLivesAndHealth() {
 
 
-	uint8_t displayLives = (player.lives > 9) ? 9 : player.lives;
+	uint8_t displayLives = (player.lives == 255) ? 0 : player.lives;
 	Sprites::drawSelfMasked(121, 0, Images::Player_Score, 0);
 	Sprites::drawSelfMasked(121, 7, Images::Numbers, displayLives);
 
@@ -116,9 +116,15 @@ void renderEnemy_Shared(uint8_t enemyIdx) {
 	int16_t eY = enemies[enemyIdx].yCoord >> 4;
 
 	if (eX >= -8 && eX < 128 && eY >= -8 && eY < 64) {
-		Sprites::drawExternalMask(eX - 1, eY - 1, sprite, mask, 0, 0);
+		uint8_t frame = enemies[enemyIdx].heading;		// Each enemy image has 16 rotated frames ..
+
+		if (enemies[enemyIdx].type == EnemyType::Boss) {
+			frame = frame % 8;							// .. except the symmetrical Boss, which only needs 8
+		}
+
+		Sprites::drawExternalMask(eX - 1, eY - 1, sprite, mask, frame, frame);
 	}
-	
+
 }
 
 void renderEnemy_Static(uint8_t enemyIdx) {
@@ -179,23 +185,25 @@ void drawRotatedChar3x5(int16_t x, int16_t y, char ch) {
 
 void renderHighScores() {
 
-	const int16_t colSpacingX = 8; 
+	const int16_t rowSpacing = 8; 
 	const int16_t stepY = 4;       
 	int16_t startX = 27;
     int16_t startY = 53;
 
 	Sprites::drawOverwrite(35, 12, Images::HighScores, 0);
 
-	for (uint8_t i = 0; i < Constants::NumberHighScores; i++) { 
+	// Each rank is a row in the player's view (fixed buffer x), drawn top to bottom ..
 
-		int16_t colX = startX - (i * colSpacingX);
+	for (uint8_t i = 0; i < Constants::NumberHighScores; i++) {
+
+		int16_t rowX = startX - (i * rowSpacing);
 		int16_t curY = startY;
 
 		curY -= (stepY + 3);
 
 		uint16_t temp = highScores[i].score;
 		for (uint8_t d = 0; d < 5; d++) {
-			drawRotatedDigit(colX, curY, temp % 10);
+			drawRotatedDigit(rowX, curY, temp % 10);
 			temp /= 10;
 			curY -= 4;
 		}
@@ -203,7 +211,7 @@ void renderHighScores() {
 
 		curY -= 4;
 		for (uint8_t c = 0; c < 3; c++) {
-			drawRotatedChar3x5(colX - 1, curY, highScores[i].initials[2 - c]); // highScores defined in Galaga_3.ino[cite: 13]
+			drawRotatedChar3x5(rowX - 1, curY, highScores[i].initials[2 - c]);
 			curY -= stepY;
 		}
 

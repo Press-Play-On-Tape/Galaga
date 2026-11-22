@@ -10,6 +10,20 @@ namespace Constants {
 	constexpr uint8_t ParticlesMax = 12;
 	constexpr uint8_t StarsMax = 16;
 	constexpr uint8_t GameOverDiverCount = 3;
+	constexpr uint8_t NumberHighScores = 4;
+
+	constexpr int EEPROM_HS_Magic_Address = 200;
+	constexpr int EEPROM_HS_Data_Address  = 201;
+	constexpr uint8_t EEPROM_HS_Magic_Value = 0x5A;
+
+	constexpr uint8_t Title_Coords[] = {
+		60, 58, 56, 54, 52, 50, 48, 46, 44, 42,
+		40, 38, 36, 34, 32, 30, 28, 26, 24, 22,
+		20, 18, 16, 14, 12, 10,  9,  8,  7,  6,
+		6,  5,  5,  4,  4,  4,  3,  3,  3,  3,
+		2,  2,  2,  2,  2,  1,  1,  1,  1,  1,
+		1,  1,
+	};
 
 };
 
@@ -39,6 +53,7 @@ enum class EnemyType : uint8_t {
 
 	Bee,
 	Butterfly,
+	Other,
 	Boss,
 	
 };

@@ -7,3 +7,4 @@
 #include "Particle.h"
 #include "Player.h"
 #include "Star.h"
+#include "HighScorreEntry.h"

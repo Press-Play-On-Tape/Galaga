@@ -2,7 +2,6 @@
 
 #include <Sprites.h>
 
-
 void resetGameOverDiver(Enemy &e, uint8_t idx) {
 
 	e.active = true;
@@ -23,7 +22,6 @@ void resetGameOverDiver(Enemy &e, uint8_t idx) {
 
 }
 
-
 void beginInitialsEntry() {
 	enteringInitials = true;
 	initialCursor = 0;
@@ -39,14 +37,17 @@ void updateAndRenderInitialsEntry() {
 		if (currentInitials[initialCursor] > 'Z') currentInitials[initialCursor] = 'A';
 		beep.tone(beep.freq(660), 2);
 	}
+
 	if (arduboy.justPressed(LEFT_BUTTON)) {
 		currentInitials[initialCursor]--;
 		if (currentInitials[initialCursor] < 'A') currentInitials[initialCursor] = 'Z';
 		beep.tone(beep.freq(520), 2);
 	}
+
 	if (arduboy.justPressed(DOWN_BUTTON)) {
 		initialCursor = (initialCursor + 1) % 3;
 	}
+
 	if (arduboy.justPressed(UP_BUTTON)) {
 		initialCursor = (initialCursor + 2) % 3;
 	}
@@ -124,7 +125,6 @@ void updateAndRenderGameOverDivers() {
 				if (d.diveIdx < 125 && arduboy.isFrameCount(2)) {
 					int8_t xInc = pgm_read_byte(&loop_x[d.diveIdx]) * d.diveDirection;
 					int8_t yInc = pgm_read_byte(&loop_y[d.diveIdx]);
-					// Subtract abs/negative so the loop doesn't push off the right edge
 					d.xCoord -= (abs(yInc) >> 1) << 4;
 					d.yCoord += (xInc >> 1) << 4;
 					d.diveIdx++;
@@ -200,11 +200,15 @@ void gameOver() {
 	if (!enteringInitials && arduboy.frameCount > 48) Sprites::drawOverwrite(54, 19, Images::PressA, 0);
 
 	if (enteringInitials) {
+
 		updateAndRenderInitialsEntry();
 		return;
+
 	}
 	else {
+
 		renderHighScores();
+
 	}
 
 	updateAndRenderGameOverDivers();

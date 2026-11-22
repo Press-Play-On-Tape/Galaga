@@ -43,27 +43,12 @@ uint8_t goDiversInitialized = 0;
 
 #include <EEPROM.h>
 
-struct HighScoreEntry {
-	char initials[3];
-	uint16_t score;
-};
 
 bool enteringInitials = false;
 uint8_t initialCursor = 0;
 char currentInitials[3] = { 'A', 'A', 'A' };
 
-
-constexpr uint8_t NUM_HIGH_SCORES = 4;
-constexpr int EEPROM_HS_MAGIC_ADDR = 200;
-constexpr int EEPROM_HS_DATA_ADDR  = 201;
-constexpr uint8_t EEPROM_HS_MAGIC_VAL = 0x5A;
-
-HighScoreEntry highScores[NUM_HIGH_SCORES];
-
-
-
-
-// Near your other game state variables in Galaga.h
+HighScoreEntry highScores[Constants::NumberHighScores];
 
 
 #include "Galaga_Render.h"
@@ -133,7 +118,7 @@ void initWave() {
 					enemies[idx].yCoord = random(4, 56) << 4;
 					break;
 
-				case Side::Right:  // far right
+				case Side::Right:  
 
 					enemies[idx].xCoord = 168 << 4;
 					enemies[idx].yCoord = random(4, 56) << 4;
@@ -147,21 +132,36 @@ void initWave() {
 
 			}
 
-			if (c == 1) {
-				enemies[idx].type = EnemyType::Butterfly;
-				enemies[idx].hp = 1;
+			switch (c) {
+
+				case 1:
+					enemies[idx].type = EnemyType::Butterfly;
+					enemies[idx].hp = 1;
+					break;
+
+				case 2:
+					enemies[idx].type = EnemyType::Boss;
+					enemies[idx].hp = 2;
+					break;
+
+				case 3:
+					enemies[idx].type = EnemyType::Other;
+					enemies[idx].hp = 2;
+					break;
+
+				default:
+					enemies[idx].type = EnemyType::Boss;
+					enemies[idx].hp = 1;
+					break;
+
 			}
-			else if (c >= 2) {
-				enemies[idx].type = EnemyType::Boss;
-				enemies[idx].hp = 2;
-			}
-			else {
-				enemies[idx].type = EnemyType::Bee;
-				enemies[idx].hp = 1;
-			}
+
 			idx++;
+
 		}
+
 	}
+
 }
 
 void resetGame() {

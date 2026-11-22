@@ -4,17 +4,7 @@
 #include "src/utils/Arduboy2Ext.h"
 #define DEBUG_BREAK    asm volatile("break\n");
 
-uint8_t Title_Coords[] = {
-	60, 58, 56, 54, 52, 50, 48, 46, 44, 42,
-	40, 38, 36, 34, 32, 30, 28, 26, 24, 22,
-	20, 18, 16, 14, 12, 10,  9,  8,  7,  6,
-	6,  5,  5,  4,  4,  4,  3,  3,  3,  3,
-	2,  2,  2,  2,  2,  1,  1,  1,  1,  1,
-	1,  1,
-};
-
 uint8_t counter = 0;
-
 uint16_t titleDecisionTimer = 0;
 int16_t titleDesiredY = 32 << 4;
 
@@ -57,20 +47,6 @@ void titleScreen_Init() {
 		enemies[i].hp = 0;
 	}
 
-// score = 123;
-// 	for (uint8_t i = 0; i < Constants::PlayerMaxBullets; i++)
-// 		pBullets[i].active = false;
-
-// if (qualifiesForHighScore(score)) {
-// beginInitialsEntry();
-// }
-// else {
-// enteringInitials = false;
-// }
-
-// arduboy.invert(false);
-// arduboy.frameCount = 0;
-// gameState = GameState::GameOver;
 	gameState = GameState::Title_Entrace;
 	arduboy.invert(false);
 
@@ -82,14 +58,14 @@ void titleScreen() {
 
 		case GameState::Title_Entrace:
 
-			Sprites::drawOverwrite(((enemies[0].xCoord + (Title_Coords[counter] << 4)) >> 4) - 1, (enemies[0].yCoord >> 4) - 1, Images::Large_Boss, arduboy.getFrameCountHalf(96));
+			Sprites::drawOverwrite(((enemies[0].xCoord + (Constants::Title_Coords[counter] << 4)) >> 4) - 1, (enemies[0].yCoord >> 4) - 1, Images::Large_Boss, arduboy.getFrameCountHalf(96));
 
 			for (uint8_t i = 0; i < 2; i++) {
-				Sprites::drawOverwrite(((enemies[i + 1].xCoord + (Title_Coords[counter] << 4)) >> 4) - 1, (enemies[i + 1].yCoord >> 4) - 1, Images::Large_Butterfly, arduboy.getFrameCountHalf(96));
+				Sprites::drawOverwrite(((enemies[i + 1].xCoord + (Constants::Title_Coords[counter] << 4)) >> 4) - 1, (enemies[i + 1].yCoord >> 4) - 1, Images::Large_Butterfly, arduboy.getFrameCountHalf(96));
 			}
 
 			for (uint8_t i = 0; i < 3; i++) {
-				Sprites::drawOverwrite(((enemies[i + 3].xCoord + (Title_Coords[counter] << 4)) >> 4) - 1, (enemies[i + 3].yCoord >> 4) - 1, Images::Large_Bee, arduboy.getFrameCountHalf(96));
+				Sprites::drawOverwrite(((enemies[i + 3].xCoord + (Constants::Title_Coords[counter] << 4)) >> 4) - 1, (enemies[i + 3].yCoord >> 4) - 1, Images::Large_Bee, arduboy.getFrameCountHalf(96));
 			}
 
 			Sprites::drawOverwrite(player.xCoord >> 4, player.yCoord >> 4, Images::LargePlayer, arduboy.isFrameCount(2));
@@ -309,7 +285,7 @@ void titleScreen() {
 
 			}
 
-			Sprites::drawOverwrite(66 + Title_Coords[counter], 0, Images::Galaga_Title, 0);
+			Sprites::drawOverwrite(66 + Constants::Title_Coords[counter], 0, Images::Galaga_Title, 0);
 			Sprites::drawOverwrite(player.xCoord >> 4, player.yCoord >> 4, Images::LargePlayer, arduboy.isFrameCount(2));
 
 			if (gameState == GameState::Title_PressA) {

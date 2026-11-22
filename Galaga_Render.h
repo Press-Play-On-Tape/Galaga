@@ -16,7 +16,6 @@ void renderBullets() {
 
 }
 
-
 void renderScore(uint16_t currentScore) {
 
 	uint8_t digits[5];
@@ -35,7 +34,6 @@ void renderScore(uint16_t currentScore) {
 	}
 
 }
-
 
 void renderLivesAndHealth() {
 
@@ -102,6 +100,11 @@ void renderEnemy_Shared(uint8_t enemyIdx) {
 		mask = Images::Butterfly_Mask;
 	}
 
+	else if (enemies[enemyIdx].type == EnemyType::Other) {
+		sprite = Images::Other;
+		mask = Images::Other_Mask;
+	}
+
 	else if (enemies[enemyIdx].type == EnemyType::Boss) {
 		sprite = Images::Boss;
 		mask = Images::Boss_Mask;
@@ -125,8 +128,6 @@ void renderEnemy_Static(uint8_t enemyIdx) {
 	}
 	
 }
-
-
 
 void renderEnemy_Diving(uint8_t enemyIdx) {
 
@@ -160,32 +161,36 @@ void renderHealthPack() {
 }
 
 void drawRotatedDigit(int16_t x, int16_t y, uint8_t digit) {
+
 	if (digit > 9) digit = 9;
-	Sprites::drawSelfMasked(x, y, Images::Numbers, digit); // or Images::Numbers
+	Sprites::drawSelfMasked(x, y, Images::Numbers, digit); 
+
 }
 
 void drawRotatedChar3x5(int16_t x, int16_t y, char ch) {
+
 	if (ch < 'A') ch = 'A';
 	if (ch > 'Z') ch = 'Z';
 	Sprites::drawSelfMasked(x, y, Images::Font_3x5, static_cast<uint8_t>(ch - 'A'));
+
 }
 
 void renderHighScores() {
-	const int16_t colSpacingX = 8; // Horizontal spacing between rank/score and initials
-	const int16_t stepY = 4;       // Vertical step per character/digit (5px height + gap)
+
+	const int16_t colSpacingX = 8; 
+	const int16_t stepY = 4;       
 	int16_t startX = 27;
     int16_t startY = 53;
 
 	Sprites::drawOverwrite(35, 12, Images::HighScores, 0);
 
-	for (uint8_t i = 0; i < NUM_HIGH_SCORES; i++) { // NUM_HIGH_SCORES defined in Galaga_3.ino[cite: 13]
+	for (uint8_t i = 0; i < Constants::NumberHighScores; i++) { 
+
 		int16_t colX = startX - (i * colSpacingX);
 		int16_t curY = startY;
 
-
 		curY -= (stepY + 3);
 
-		// 5-digit score (least-significant digit first, matching renderScore in Galaga_Render.h)
 		uint16_t temp = highScores[i].score;
 		for (uint8_t d = 0; d < 5; d++) {
 			drawRotatedDigit(colX, curY, temp % 10);
@@ -194,11 +199,12 @@ void renderHighScores() {
 		}
 
 
-		curY -= 4; // Small gap between initials and score digits
-		// 3 initials (A..Z) using Font_3x5
+		curY -= 4;
 		for (uint8_t c = 0; c < 3; c++) {
 			drawRotatedChar3x5(colX - 1, curY, highScores[i].initials[2 - c]); // highScores defined in Galaga_3.ino[cite: 13]
 			curY -= stepY;
 		}
+
 	}
+
 }

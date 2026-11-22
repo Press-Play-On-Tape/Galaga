@@ -510,16 +510,16 @@ void updateBullets() {
 
 
 void saveHighScores() {
-	EEPROM.write(EEPROM_HS_MAGIC_ADDR, EEPROM_HS_MAGIC_VAL);
-	EEPROM.put(EEPROM_HS_DATA_ADDR, highScores);
+	EEPROM.write(Constants::EEPROM_HS_Magic_Address, Constants::EEPROM_HS_Magic_Value);
+	EEPROM.put(Constants::EEPROM_HS_Data_Address, highScores);
 }
 
 void loadHighScores() {
-	if (EEPROM.read(EEPROM_HS_MAGIC_ADDR) == EEPROM_HS_MAGIC_VAL) {
-		EEPROM.get(EEPROM_HS_DATA_ADDR, highScores);
+	if (EEPROM.read(Constants::EEPROM_HS_Magic_Address) == Constants::EEPROM_HS_Magic_Value) {
+		EEPROM.get(Constants::EEPROM_HS_Data_Address, highScores);
 	}
 	else {
-		for (uint8_t i = 0; i < NUM_HIGH_SCORES; i++) {
+		for (uint8_t i = 0; i < Constants::NumberHighScores; i++) {
 			highScores[i].initials[0] = 'A';
 			highScores[i].initials[1] = 'A';
 			highScores[i].initials[2] = 'A';
@@ -530,20 +530,20 @@ void loadHighScores() {
 }
 
 bool qualifiesForHighScore(uint16_t newScore) {
-	return newScore > 0 && newScore > highScores[NUM_HIGH_SCORES - 1].score;
+	return newScore > 0 && newScore > highScores[Constants::NumberHighScores - 1].score;
 }
 
 // Returns the rank index (0..3) where newScore was inserted, or -1 if not on the board
 int8_t insertHighScore(uint16_t newScore, const char initials[3]) {
 	if (!qualifiesForHighScore(newScore)) return -1;
 
-	int8_t rank = NUM_HIGH_SCORES - 1;
+	int8_t rank = Constants::NumberHighScores - 1;
 	while (rank > 0 && newScore > highScores[rank - 1].score) {
 		rank--;
 	}
 
 	// Shift lower scores down
-	for (int8_t i = NUM_HIGH_SCORES - 1; i > rank; i--) {
+	for (int8_t i = Constants::NumberHighScores - 1; i > rank; i--) {
 		highScores[i] = highScores[i - 1];
 	}
 

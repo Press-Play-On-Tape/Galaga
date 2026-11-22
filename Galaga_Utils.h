@@ -23,10 +23,10 @@ void spawnParticles(int16_t x, int16_t y, uint8_t count) {
 
 void spawnMothership() {
 
-	mothershipSpawnTimer++;
+	mothership.spawnTimer++;
 
-	if (mothershipSpawnTimer > max(150, 350 - (survivalTimer / 4))) {
-		mothershipSpawnTimer = 0;
+	if (mothership.spawnTimer > max(150, 350 - (survivalTimer / 4))) {
+		mothership.spawnTimer = 0;
 		mothership.active = true;
 		mothership.diving = false;
 		mothership.xCoord = 110 << 4;
@@ -36,6 +36,14 @@ void spawnMothership() {
 		mothership.phase = 0;
 	}
 	
+}
+
+void startPlayerPuff() {
+
+	player.puffX = player.xCoord >> 4;
+	player.puffY = player.yCoord >> 4;
+	player.deathTimer = 28; // 7 frames * 4 frames per puff
+
 }
 
 void checkEnemyAndPlayerCollision(uint8_t enemyIdx) {
@@ -75,7 +83,7 @@ void checkEnemyAndPlayerCollision(uint8_t enemyIdx) {
 
 		if (player.shieldActive)  return;
 
-		if (invulnTimer == 0) {
+		if (player.invulnTimer == 0) {
 
 			spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 8);
 			player.health -= 34;
@@ -84,12 +92,13 @@ void checkEnemyAndPlayerCollision(uint8_t enemyIdx) {
 
 			if (player.health <= 0) {
 
+				startPlayerPuff();
 				player.lives--;
 				beep.tone(beep.freq(50), 25);
 
 				if (player.lives == 0) {
 
-					gameOverDelayTimer = 60; 
+					gameOverDelayTimer = 60;
 					player.health = 0;
 
 				}
@@ -97,12 +106,9 @@ void checkEnemyAndPlayerCollision(uint8_t enemyIdx) {
 					player.health = 100;
 					player.xCoord = 4 << 4;
 					player.yCoord = 32 << 4;
-					invulnTimer = 90;
+					player.invulnTimer = 90;
 				}
 
-			}
-			else {
-				invulnTimer = 80;
 			}
 
 		}
@@ -138,7 +144,7 @@ void checkMothershipCollision() {
 
 			if (player.shieldActive)  return;
 
-			if (invulnTimer == 0) {
+			if (player.invulnTimer == 0) {
 
 				spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 20);
 				player.health -= 50;
@@ -147,12 +153,13 @@ void checkMothershipCollision() {
 
 				if (player.health <= 0) {
 
+					startPlayerPuff();
 					player.lives--;
 					beep.tone(beep.freq(50), 25);
 
 					if (player.lives == 0) {
 
-						gameOverDelayTimer = 60; 
+						gameOverDelayTimer = 60;
 						player.health = 0;
 
 					}
@@ -160,12 +167,9 @@ void checkMothershipCollision() {
 						player.health = 100;
 						player.xCoord = 4 << 4;
 						player.yCoord = 32 << 4;
-						invulnTimer = 90;
+						player.invulnTimer = 90;
 					}
 
-				}
-				else {
-					invulnTimer = 80;
 				}
 
 			}
@@ -188,13 +192,13 @@ void checkMothershipCollision() {
 
 				pBullets[b].active = false;
 				mothership.hp--;
-				spawnParticles((mothership.xCoord + formationOffsetX) >> 4, mothership.yCoord >> 4, 8);
+				spawnParticles(mothership.xCoord >> 4, mothership.yCoord >> 4, 8);
 
 				if (mothership.hp == 0) {
 
 					mothership.active = false;
 					score += 40;
-					if (mothership.diving) dualShooterTimer = 600;
+					if (mothership.diving) player.dualShooterTimer = 600;
 					beep.tone(beep.freq(700), 8);
 
 				}
@@ -344,7 +348,7 @@ void checkPlayerAndEnemyBulletCollision(uint8_t bulletIdx) {
 
 		if (player.shieldActive)  return;
 
-		if (invulnTimer == 0) {
+		if (player.invulnTimer == 0) {
 
 			spawnParticles(player.xCoord >> 4, player.yCoord >> 4, 8);
 
@@ -354,6 +358,7 @@ void checkPlayerAndEnemyBulletCollision(uint8_t bulletIdx) {
 
 			if (player.health <= 0) {
 
+				startPlayerPuff();
 				player.lives--;
 				beep.tone(beep.freq(50), 25);
 
@@ -367,12 +372,9 @@ void checkPlayerAndEnemyBulletCollision(uint8_t bulletIdx) {
 					player.health = 100;
 					player.xCoord = 4 << 4;
 					player.yCoord = 32 << 4;
-					invulnTimer = 90;
+					player.invulnTimer = 90;
 				}
 
-			}
-			else {
-				invulnTimer = 80;
 			}
 
 		}
@@ -385,11 +387,11 @@ void launchHealthPack() {
 
 	if (score >= 600) {
 
-		healthPackSpawnTimer++;
+		healthPack.spawnTimer++;
 
-		if (healthPackSpawnTimer > 500) {
+		if (healthPack.spawnTimer > 500) {
 
-			healthPackSpawnTimer = 0;
+			healthPack.spawnTimer = 0;
 			healthPack.active = true;
 			healthPack.xCoord = random(20, 100) << 4;
 
@@ -410,7 +412,7 @@ void launchHealthPack() {
 
 void firePlayerBullet(uint8_t offset = 4) {
 
-	if (dualShooterTimer > 0) {
+	if (player.dualShooterTimer > 0) {
 
 		for (uint8_t i = 0; i < Constants::PlayerMaxBullets && i + 1 < Constants::PlayerMaxBullets; i += 2) {
 		
@@ -510,15 +512,21 @@ void updateBullets() {
 
 
 void saveHighScores() {
+
 	EEPROM.write(Constants::EEPROM_HS_Magic_Address, Constants::EEPROM_HS_Magic_Value);
 	EEPROM.put(Constants::EEPROM_HS_Data_Address, highScores);
+
 }
 
 void loadHighScores() {
+
 	if (EEPROM.read(Constants::EEPROM_HS_Magic_Address) == Constants::EEPROM_HS_Magic_Value) {
+
 		EEPROM.get(Constants::EEPROM_HS_Data_Address, highScores);
+
 	}
 	else {
+
 		for (uint8_t i = 0; i < Constants::NumberHighScores; i++) {
 			highScores[i].initials[0] = 'A';
 			highScores[i].initials[1] = 'A';
@@ -526,15 +534,20 @@ void loadHighScores() {
 			highScores[i].score = 0;
 		}
 		saveHighScores();
+
 	}
+
 }
 
 bool qualifiesForHighScore(uint16_t newScore) {
+
 	return newScore > 0 && newScore > highScores[Constants::NumberHighScores - 1].score;
+
 }
 
 // Returns the rank index (0..3) where newScore was inserted, or -1 if not on the board
 int8_t insertHighScore(uint16_t newScore, const char initials[3]) {
+
 	if (!qualifiesForHighScore(newScore)) return -1;
 
 	int8_t rank = Constants::NumberHighScores - 1;
@@ -554,4 +567,5 @@ int8_t insertHighScore(uint16_t newScore, const char initials[3]) {
 
 	saveHighScores();
 	return rank;
+
 }

@@ -66,16 +66,18 @@ void renderParticles() {
 
 void renderPlayer() {
 
+
+
 	// Render player ..
 
-	if (invulnTimer == 0 || (invulnTimer % 18 < 9)) {
+	if (player.invulnTimer == 0 || (player.invulnTimer % 24 < 12)) {
 
 		int16_t pX = player.xCoord >> 4;
 		int16_t pY = player.yCoord >> 4;
 
 		if (player.health > 0 && pX >= -8 && pX < 128 && pY >= -8 && pY < 64) {
 
-			if (dualShooterTimer > 0) {
+			if (player.dualShooterTimer > 0) {
 				Sprites::drawSelfMasked(pX, pY - 3, Images::Player, 0);
 				Sprites::drawSelfMasked(pX, pY + 3, Images::Player, 0);
 			}

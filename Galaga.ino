@@ -3,7 +3,7 @@
 #include "src/Images.h"
 #include "src/utils/Arduboy2Ext.h"
 #include "src/entities/Entities.h"
-
+#include <EEPROM.h>
 
 Arduboy2Ext arduboy;
 BeepPin1 beep;
@@ -24,16 +24,12 @@ Player player;
 
 uint16_t score = 0;
 uint8_t wave = 1;
-uint16_t invulnTimer = 0;
 uint8_t screenInvertTimer = 0;
-uint16_t dualShooterTimer = 0;
 uint16_t survivalTimer = 0;
 
-int16_t formationOffsetX = 0;
 int16_t formationOffsetY = 0;
 uint16_t diveTimer = 0;
-uint16_t mothershipSpawnTimer = 0;
-uint16_t healthPackSpawnTimer = 0;
+
 uint8_t arrivalReleaseTimer = 0;
 uint16_t replenishTimer = 0;
 uint16_t formationFrame = 0;
@@ -41,7 +37,9 @@ uint8_t gameOverDelayTimer = 0;
 uint8_t goDiversInitialized = 0;
 
 
-#include <EEPROM.h>
+
+
+
 
 
 bool enteringInitials = false;
@@ -75,16 +73,15 @@ bool formationComplete() {
 void initWave() {
 
 	mothership.active = false;
-	mothershipSpawnTimer = 0;
+	mothership.spawnTimer = 0;
 	healthPack.active = false;
-	healthPackSpawnTimer = 0;
+	healthPack.spawnTimer = 0;
+
 	arrivalReleaseTimer = 0;
 	replenishTimer = 0;
-	formationOffsetX = 0;
 	formationOffsetY = 0;
 	formationFrame = 0;
 
-	int16_t waveYShift = 0;
 	uint8_t idx = 0;
 
 	for (uint8_t c = 0; c < Constants::EnemyRows; c++) {
@@ -95,7 +92,7 @@ void initWave() {
 			const uint8_t ROW_SPACING = 9;
 
 			enemies[idx].homeX = (72 + (c * COL_SPACING)) << 4;
-			enemies[idx].homeY = ((6 + (r * ROW_SPACING)) + waveYShift) << 4;
+			enemies[idx].homeY = (6 + (r * ROW_SPACING)) << 4;
 
 			if (enemies[idx].homeY < (2 << 4)) enemies[idx].homeY = 2 << 4;
 
@@ -112,47 +109,47 @@ void initWave() {
 
 			switch (side) {
 
-				case Side::Left:
+			case Side::Left:
 
-					enemies[idx].xCoord = -40 << 4;
-					enemies[idx].yCoord = random(4, 56) << 4;
-					break;
+				enemies[idx].xCoord = -40 << 4;
+				enemies[idx].yCoord = random(4, 56) << 4;
+				break;
 
-				case Side::Right:  
+			case Side::Right:
 
-					enemies[idx].xCoord = 168 << 4;
-					enemies[idx].yCoord = random(4, 56) << 4;
-					break;
+				enemies[idx].xCoord = 168 << 4;
+				enemies[idx].yCoord = random(4, 56) << 4;
+				break;
 
-				default:  
+			default:
 
-					enemies[idx].xCoord = random(40, 100) << 4;
-					enemies[idx].yCoord = -32 << 4;
-					break;
+				enemies[idx].xCoord = random(40, 100) << 4;
+				enemies[idx].yCoord = -32 << 4;
+				break;
 
 			}
 
 			switch (c) {
 
-				case 1:
-					enemies[idx].type = EnemyType::Butterfly;
-					enemies[idx].hp = 1;
-					break;
+			case 1:
+				enemies[idx].type = EnemyType::Butterfly;
+				enemies[idx].hp = 1;
+				break;
 
-				case 2:
-					enemies[idx].type = EnemyType::Boss;
-					enemies[idx].hp = 2;
-					break;
+			case 2:
+				enemies[idx].type = EnemyType::Boss;
+				enemies[idx].hp = 2;
+				break;
 
-				case 3:
-					enemies[idx].type = EnemyType::Other;
-					enemies[idx].hp = 2;
-					break;
+			case 3:
+				enemies[idx].type = EnemyType::Other;
+				enemies[idx].hp = 2;
+				break;
 
-				default:
-					enemies[idx].type = EnemyType::Boss;
-					enemies[idx].hp = 1;
-					break;
+			default:
+				enemies[idx].type = EnemyType::Boss;
+				enemies[idx].hp = 1;
+				break;
 
 			}
 
@@ -170,17 +167,14 @@ void resetGame() {
 	gameOverDelayTimer = 0;
 	score = 0;
 	wave = 1;
-	formationOffsetX = 0;
-	invulnTimer = 90;
 	screenInvertTimer = 0;
-	dualShooterTimer = 0;
 	survivalTimer = 0;
-	goDiversInitialized = false;
+	goDiversInitialized = 0;
 	enteringInitials = false;
 
 	for (uint8_t i = 0; i < Constants::PlayerMaxBullets; i++) pBullets[i].active = false;
 	for (uint8_t i = 0; i < Constants::EnemiesMaxBullets; i++) eBullets[i].active = false;
-	
+
 	initWave();
 
 }
@@ -203,28 +197,28 @@ void triggerRandomDives() {
 	uint8_t scoreCap = 4; // Default fallback for 3001+
 
 	switch (score) {
-	
-		case 0 ... 200:
-			scoreCap = 1;
-			break;
 
-		case 201 ... 400:
-			scoreCap = 2;
-			break;
+	case 0 ... 200:
+		scoreCap = 1;
+		break;
 
-		case 401 ... 600:
-			scoreCap = 3;
-			break;
+	case 201 ... 400:
+		scoreCap = 2;
+		break;
 
-		default:
-			scoreCap = 4;
-			break;
+	case 401 ... 600:
+		scoreCap = 3;
+		break;
+
+	default:
+		scoreCap = 4;
+		break;
 
 	}
 
 
 	// If we have already reached or exceeded the cap for our score bracket, don't trigger new dives ..
-	
+
 	if (score <= 3000 && currentDivers >= scoreCap) {
 
 		diveTimer = 0;
@@ -233,13 +227,13 @@ void triggerRandomDives() {
 	}
 
 	// Calculate how many new divers we can launch without breaking the cap ..
-	
+
 	uint8_t maxSquad = min(4, 1 + (wave / 2) + (survivalTimer / 800));
 
 	if (score <= 3000) {
 		maxSquad = min(maxSquad, (uint8_t)(scoreCap - currentDivers));
 	}
-	
+
 	if (maxSquad == 0) {
 		diveTimer = 0;
 		return;
@@ -276,10 +270,7 @@ void triggerRandomDives() {
 
 				if (!rowOccupied) {
 
-					if (abs(
-						enemies[idx].yCoord -
-						(enemies[idx].homeY + formationOffsetY)
-					) > (4 << 4)) {
+					if (abs(enemies[idx].yCoord - (enemies[idx].homeY + formationOffsetY)) > (4 << 4)) {
 						continue;
 					}
 
@@ -294,7 +285,7 @@ void triggerRandomDives() {
 
 		if (target != -1) {
 
-			enemies[target].xCoord = enemies[target].homeX + formationOffsetX;
+			enemies[target].xCoord = enemies[target].homeX;
 			enemies[target].yCoord = enemies[target].homeY + formationOffsetY;
 			enemies[target].diving = true;
 			enemies[target].returning = false;
@@ -340,13 +331,13 @@ void setup() {
 
 void updatePlaying() {
 
-	
+
 	// Housekeeping ..
 
-	if (invulnTimer > 0) invulnTimer--;
+	if (player.invulnTimer > 0) player.invulnTimer--;
 	if (screenInvertTimer > 0) screenInvertTimer--;
-	if (dualShooterTimer > 0) dualShooterTimer--;
-	
+	if (player.dualShooterTimer > 0) player.dualShooterTimer--;
+
 	survivalTimer++;
 
 	if (screenInvertTimer > 0) {
@@ -390,7 +381,7 @@ void updatePlaying() {
 	}
 
 	// A fires, B toggles the round shield ..
-	
+
 	if (arduboy.justPressed(A_BUTTON)) {
 		firePlayerBullet();
 	}
@@ -461,7 +452,7 @@ void updatePlaying() {
 		}
 
 	}
-	
+
 	if (healthPack.active) 	checkHealthPackCollision();
 
 
@@ -506,23 +497,23 @@ void updatePlaying() {
 
 				switch (side) {
 
-					case Side::Left: 
+				case Side::Left:
 
-						enemies[idx].xCoord = -24 << 4;
-						enemies[idx].yCoord = ((enemies[idx].homeY >> 4) + random(-6, 7)) << 4;
-						break;
+					enemies[idx].xCoord = -24 << 4;
+					enemies[idx].yCoord = ((enemies[idx].homeY >> 4) + random(-6, 7)) << 4;
+					break;
 
-					case Side::Right:
+				case Side::Right:
 
-						enemies[idx].xCoord = 144 << 4;
-						enemies[idx].yCoord = ((enemies[idx].homeY >> 4) + random(-6, 7)) << 4;
-						break;
+					enemies[idx].xCoord = 144 << 4;
+					enemies[idx].yCoord = ((enemies[idx].homeY >> 4) + random(-6, 7)) << 4;
+					break;
 
-					default:
+				default:
 
-						enemies[idx].xCoord = ((enemies[idx].homeX >> 4) + random(-20, 21)) << 4;
-						enemies[idx].yCoord = -24 << 4;
-						break;
+					enemies[idx].xCoord = ((enemies[idx].homeX >> 4) + random(-20, 21)) << 4;
+					enemies[idx].yCoord = -24 << 4;
+					break;
 
 				}
 				break;
@@ -540,7 +531,6 @@ void updatePlaying() {
 
 	float dynamicAmplitude = 4.0f;
 
-	formationOffsetX = 0;
 	formationOffsetY = (1 << 4) + (int16_t)(sin((float)formationFrame * 0.025f) * dynamicAmplitude * 16.0f);
 
 	if (!mothership.active && formationComplete()) {
@@ -584,8 +574,8 @@ void updatePlaying() {
 
 	if (formationComplete()) {
 
-		// Ensure they stay in formation for a short breathing period before starting dives
-		if (formationFrame > 120) { // Adjust 120 frames (~2 seconds at 60fps) for longer/shorter wait
+		if (formationFrame > 120) { 
+
 			diveTimer++;
 			uint16_t currentDiveInterval = max(40, 150 - (wave * 8) - (survivalTimer / 40));
 
@@ -593,6 +583,7 @@ void updatePlaying() {
 				diveTimer = 0;
 				triggerRandomDives();
 			}
+
 		}
 
 	}
@@ -611,7 +602,7 @@ void updatePlaying() {
 
 			enemies[i].entryPhase++;
 
-			int16_t targetX = enemies[i].homeX + formationOffsetX;
+			int16_t targetX = enemies[i].homeX;
 			int16_t targetY = enemies[i].homeY + formationOffsetY;
 			int16_t dx = targetX - enemies[i].xCoord;
 			int16_t dy = targetY - enemies[i].yCoord;
@@ -620,22 +611,22 @@ void updatePlaying() {
 
 			switch (enemies[i].spawnSide) {
 
-				case Side::Left:  // left spiral
+			case Side::Left:  // left spiral
 
-					curveY = (int16_t)(sin(enemies[i].entryPhase * 0.06f) * (12 << 4));
-					curveX = (int16_t)(cos(enemies[i].entryPhase * 0.05f) * (5 << 4));
-					break;
+				curveY = (int16_t)(sin(enemies[i].entryPhase * 0.06f) * (12 << 4));
+				curveX = (int16_t)(cos(enemies[i].entryPhase * 0.05f) * (5 << 4));
+				break;
 
-				case Side::Right:  // right spiral
+			case Side::Right:  // right spiral
 
-					curveY = (int16_t)(sin(enemies[i].entryPhase * 0.06f) * (12 << 4));
-					curveX = -(int16_t)(cos(enemies[i].entryPhase * 0.05f) * (5 << 4));
-					break;
+				curveY = (int16_t)(sin(enemies[i].entryPhase * 0.06f) * (12 << 4));
+				curveX = -(int16_t)(cos(enemies[i].entryPhase * 0.05f) * (5 << 4));
+				break;
 
-				default:  // top dive
+			default:  // top dive
 
-					curveX = (int16_t)(sin(enemies[i].entryPhase * 0.08f) * (10 << 4));
-					break;
+				curveX = (int16_t)(sin(enemies[i].entryPhase * 0.08f) * (10 << 4));
+				break;
 
 			}
 
@@ -655,7 +646,7 @@ void updatePlaying() {
 			if (abs(dx) < (8 << 4) && abs(dy) < (8 << 4)) {
 
 				enemies[i].arriving = false;
-				enemies[i].xCoord = enemies[i].homeX + formationOffsetX;
+				enemies[i].xCoord = enemies[i].homeX;
 				enemies[i].yCoord = enemies[i].homeY + formationOffsetY;
 
 			}
@@ -663,7 +654,7 @@ void updatePlaying() {
 		}
 		else if (!enemies[i].diving) {
 
-			enemies[i].xCoord = enemies[i].homeX + formationOffsetX;
+			enemies[i].xCoord = enemies[i].homeX;
 			int16_t targetY = enemies[i].homeY + formationOffsetY;
 
 			if (targetY < (2 << 4)) targetY = 2 << 4;
@@ -678,29 +669,29 @@ void updatePlaying() {
 			int16_t diveSpeed = 10 + (wave * 1) + (survivalTimer / 300);
 
 			// Check if the enemy has gone completely off the bottom/screen edge to reform at the top
-			if (enemies[i].xCoord < (-8 << 4) || enemies[i].yCoord < (-30 << 4) || enemies[i].yCoord > (90 << 4)) {
+			if (enemies[i].xCoord < (-8 << 4) || enemies[i].yCoord < (-30 << 4) || enemies[i].yCoord >(90 << 4)) {
 
 				Side side = static_cast<Side>(random(0, 3));
 				enemies[i].spawnSide = side;
 
 				switch (side) {
 
-					case Side::Left:  
+				case Side::Left:
 
-						enemies[i].xCoord = -24 << 4;
-						enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
-						break;
+					enemies[i].xCoord = -24 << 4;
+					enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
+					break;
 
-					case Side::Right:  
+				case Side::Right:
 
-						enemies[i].xCoord = 144 << 4;
-						enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
-						break;
+					enemies[i].xCoord = 144 << 4;
+					enemies[i].yCoord = ((enemies[i].homeY >> 4) + random(-6, 7)) << 4;
+					break;
 
-					default: // top re-entry
-						enemies[i].xCoord = ((enemies[i].homeX >> 4) + random(-20, 21)) << 4;
-						enemies[i].yCoord = -24 << 4;
-						break;
+				default: // top re-entry
+					enemies[i].xCoord = ((enemies[i].homeX >> 4) + random(-20, 21)) << 4;
+					enemies[i].yCoord = -24 << 4;
+					break;
 
 				}
 
@@ -721,7 +712,7 @@ void updatePlaying() {
 
 			if (enemies[i].divePattern != DivePattern::LoopTheLoop && enemies[i].divePattern != DivePattern::ZigZag) {
 
-				enemies[i].xCoord -= diveSpeed; 
+				enemies[i].xCoord -= diveSpeed;
 				int16_t dy = player.yCoord - enemies[i].yCoord;
 				if (dy > 0) enemies[i].yCoord += min((int16_t)4, dy / 4);
 				else if (dy < 0) enemies[i].yCoord -= min((int16_t)4, -dy / 4);
@@ -733,49 +724,49 @@ void updatePlaying() {
 
 			switch (enemies[i].divePattern) {
 
-				case DivePattern::GentleSine:
-					enemies[i].yCoord += (int16_t)(sin((float)enemies[i].divePhase * 0.06) * 1.5 * enemies[i].diveDirection);
-					break;
+			case DivePattern::GentleSine:
+				enemies[i].yCoord += (int16_t)(sin((float)enemies[i].divePhase * 0.06) * 1.5 * enemies[i].diveDirection);
+				break;
 
-				case DivePattern::WiderCosine:
-					enemies[i].yCoord += (int16_t)(cos((float)enemies[i].divePhase * 0.08f) * 2.0f * enemies[i].diveDirection);
-					break;
+			case DivePattern::WiderCosine:
+				enemies[i].yCoord += (int16_t)(cos((float)enemies[i].divePhase * 0.08f) * 2.0f * enemies[i].diveDirection);
+				break;
 
-				case DivePattern::BasicLoop:
-					// Looping pattern: combines both sine and cosine with different frequencies to trace a loop/corkscrew
-					enemies[i].xCoord += (int16_t)(cos((float)enemies[i].divePhase * 0.12f) * 2.0f); // slight forward/back loop kick
-					enemies[i].yCoord += (int16_t)(sin((float)enemies[i].divePhase * 0.12f) * 4.5f * enemies[i].diveDirection);
-					break;
+			case DivePattern::BasicLoop:
+				// Looping pattern: combines both sine and cosine with different frequencies to trace a loop/corkscrew
+				enemies[i].xCoord += (int16_t)(cos((float)enemies[i].divePhase * 0.12f) * 2.0f); // slight forward/back loop kick
+				enemies[i].yCoord += (int16_t)(sin((float)enemies[i].divePhase * 0.12f) * 4.5f * enemies[i].diveDirection);
+				break;
 
-				case DivePattern::LoopTheLoop:
+			case DivePattern::LoopTheLoop:
 
-					if (enemies[i].diveIdx < 125 && arduboy.isFrameCount(2)) {
+				if (enemies[i].diveIdx < 125 && arduboy.isFrameCount(2)) {
 
-						int8_t xInc = pgm_read_byte(&loop_x[enemies[i].diveIdx]) * enemies[i].diveDirection;
-						int8_t yInc = pgm_read_byte(&loop_y[enemies[i].diveIdx]);// * enemies[i].diveDirection;
+					int8_t xInc = pgm_read_byte(&loop_x[enemies[i].diveIdx]) * enemies[i].diveDirection;
+					int8_t yInc = pgm_read_byte(&loop_y[enemies[i].diveIdx]);// * enemies[i].diveDirection;
 
-						enemies[i].xCoord += yInc << 4;
-						enemies[i].yCoord += xInc << 4;
-						enemies[i].diveIdx++;
+					enemies[i].xCoord += yInc << 4;
+					enemies[i].yCoord += xInc << 4;
+					enemies[i].diveIdx++;
 
-					}
+				}
 
-					break;
+				break;
 
-				case DivePattern::ZigZag:
+			case DivePattern::ZigZag:
 
-					if (enemies[i].diveIdx < 125 && arduboy.isFrameCount(2)) {
+				if (enemies[i].diveIdx < 125 && arduboy.isFrameCount(2)) {
 
-						int8_t xInc = pgm_read_byte(&zigzag_x[enemies[i].diveIdx]) * enemies[i].diveDirection;
-						int8_t yInc = pgm_read_byte(&zigzag_y[enemies[i].diveIdx]);// * enemies[i].diveDirection;
+					int8_t xInc = pgm_read_byte(&zigzag_x[enemies[i].diveIdx]) * enemies[i].diveDirection;
+					int8_t yInc = pgm_read_byte(&zigzag_y[enemies[i].diveIdx]);// * enemies[i].diveDirection;
 
-						enemies[i].xCoord += yInc << 4;
-						enemies[i].yCoord += xInc << 4;
-						enemies[i].diveIdx++;
+					enemies[i].xCoord += yInc << 4;
+					enemies[i].yCoord += xInc << 4;
+					enemies[i].diveIdx++;
 
-					}
+				}
 
-					break;
+				break;
 			}
 
 			// Firing check during dive
@@ -866,7 +857,7 @@ void updatePlaying() {
 	}
 
 	{
-		int16_t msX = (mothership.xCoord + formationOffsetX) >> 4;
+		int16_t msX = (mothership.xCoord) >> 4;
 		int16_t msY = mothership.yCoord >> 4;
 
 		if (msX >= -8 && msX < 128 && msY >= -8 && msY < 64) {
@@ -875,7 +866,36 @@ void updatePlaying() {
 
 	}
 
-	renderPlayer();
+
+	// Render the puff frame?
+
+	uint8_t puffFrame = 0;
+	bool showPuff = false;
+	bool hidePlayerForExplosion = false;
+
+	if (player.deathTimer > 0) {
+
+		uint8_t elapsed = 28 - player.deathTimer; 
+		puffFrame = elapsed / 4;                  
+	
+		if (puffFrame > 6) puffFrame = 6;
+		showPuff = true;
+	
+		if (puffFrame >= 3) {
+			hidePlayerForExplosion = true;
+		}
+	
+		player.deathTimer--;
+	
+	}
+
+	if (!hidePlayerForExplosion) {
+		renderPlayer();
+	}
+
+	if (showPuff) {
+		Sprites::drawSelfMasked(player.puffX - 4, player.puffY - 4, Images::Puff, puffFrame);
+	}
 
 	if (player.shieldActive) {
 		int16_t px = (player.xCoord >> 4);
@@ -884,7 +904,7 @@ void updatePlaying() {
 	}
 
 	// Check if all enemies in the wave are completely inactive (dead) ..
-	
+
 	bool allEnemiesDead = true;
 
 	for (uint8_t i = 0; i < Constants::EnemiesMax; i++) {
@@ -934,28 +954,28 @@ void loop() {
 
 	switch (gameState) {
 
-		case GameState::SplahScreen:
-			splashScreen();
-			break;
+	case GameState::SplahScreen:
+		splashScreen();
+		break;
 
-		case GameState::Title_Init:
-			titleScreen_Init();
-			[[fallthrough]]
+	case GameState::Title_Init:
+		titleScreen_Init();
+		[[fallthrough]]
 
-		case GameState::Title_Entrace ... GameState::Title_PressA:
-			updateStars();
-			titleScreen();
-			break;
+	case GameState::Title_Entrace ... GameState::Title_PressA:
+		updateStars();
+		titleScreen();
+		break;
 
-		case GameState::Playing:
-			updateStars();
-			updatePlaying();
-			break;
+	case GameState::Playing:
+		updateStars();
+		updatePlaying();
+		break;
 
-		case GameState::GameOver:
-			updateStars();
-			gameOver();
-			break;
+	case GameState::GameOver:
+		updateStars();
+		gameOver();
+		break;
 
 	}
 
